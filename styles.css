@@ -33,9 +33,9 @@ body {
   margin: 0;
   color: var(--text);
   background:
-    radial-gradient(circle at 8% -10%, rgba(154, 92, 255, 0.16), transparent 24rem),
-    radial-gradient(circle at 90% 0%, rgba(53, 198, 212, 0.12), transparent 28rem),
-    linear-gradient(180deg, #151a20 0%, var(--bg-deep) 100%);
+    radial-gradient(circle at 20% -10%, rgba(154, 92, 255, 0.3), transparent 30rem),
+    radial-gradient(circle at 88% 8%, rgba(53, 198, 212, 0.16), transparent 26rem),
+    linear-gradient(180deg, #171d23 0%, var(--bg-deep) 100%);
 }
 
 body::before {
@@ -140,15 +140,12 @@ a {
   min-height: min(700px, calc(100vh - 104px));
   overflow: hidden;
   border-bottom: 1px solid var(--line);
-  background:
-    linear-gradient(180deg, rgba(19, 24, 30, 0.2), rgba(11, 15, 20, 0.86)),
-    #11161c;
 }
 
 .hero-media {
   position: absolute;
   inset: 0;
-  opacity: 0.72;
+  opacity: 0.52;
 }
 
 .hero-media::after {
@@ -156,26 +153,16 @@ a {
   inset: 0;
   content: "";
   background:
-    linear-gradient(90deg, rgba(11, 15, 20, 0.98), rgba(11, 15, 20, 0.74) 38%, rgba(11, 15, 20, 0.9)),
-    linear-gradient(0deg, rgba(11, 15, 20, 0.98), rgba(11, 15, 20, 0.36) 56%, rgba(11, 15, 20, 0.8));
+    linear-gradient(90deg, rgba(11, 15, 20, 0.95), rgba(11, 15, 20, 0.6) 46%, rgba(11, 15, 20, 0.92)),
+    linear-gradient(0deg, rgba(11, 15, 20, 0.95), rgba(11, 15, 20, 0.12) 42%, rgba(11, 15, 20, 0.82));
 }
 
 .hero-media img {
-  position: absolute;
-  right: -5%;
-  bottom: -3%;
-  width: min(88vw, 1160px);
-  height: auto;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  object-position: center;
-  border: 1px solid rgba(168, 183, 197, 0.14);
-  border-radius: 10px;
-  box-shadow:
-    0 32px 110px rgba(0, 0, 0, 0.62),
-    0 0 54px rgba(53, 198, 212, 0.08);
-  filter: saturate(1.12) contrast(1.05);
-  transform: perspective(1200px) rotateX(2deg) rotateY(-5deg);
-  transform-origin: center;
+  object-position: center top;
+  filter: saturate(1.18) contrast(1.04);
 }
 
 .hero-shell {
@@ -494,13 +481,6 @@ h3 {
   .hero-shell {
     align-items: end;
     padding-top: 96px;
-  }
-
-  .hero-media img {
-    right: -64%;
-    width: 180vw;
-    max-width: none;
-    opacity: 0.9;
   }
 
   .license-panel {
