@@ -488,6 +488,106 @@ h3 {
   color: var(--cyan);
 }
 
+.auth-page {
+  display: grid;
+  min-height: calc(100vh - 72px);
+  padding: 88px 24px;
+  place-items: center;
+}
+
+.auth-card {
+  width: min(520px, 100%);
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(57, 214, 228, 0.08), rgba(156, 102, 255, 0.08)),
+    var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.auth-card h1 {
+  margin-bottom: 12px;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+}
+
+.auth-copy,
+.form-status {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--text);
+  font-size: 0.94rem;
+  font-weight: 850;
+}
+
+.auth-form input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid rgba(178, 194, 210, 0.2);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: rgba(11, 16, 22, 0.86);
+  font: inherit;
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: rgba(57, 214, 228, 0.62);
+  box-shadow: 0 0 0 3px rgba(57, 214, 228, 0.12);
+}
+
+.auth-form button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.form-status {
+  min-height: 24px;
+  margin: 16px 0 0;
+  color: #ffb4ae;
+}
+
+.admin-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.admin-panel > div {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(13, 18, 24, 0.54);
+}
+
+.admin-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.admin-panel strong {
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
 @media (max-width: 960px) {
   .hero,
   .section {
@@ -576,5 +676,17 @@ h3 {
 
   .site-footer {
     width: calc(100% - 32px);
+  }
+
+  .auth-page {
+    padding: 56px 16px;
+  }
+
+  .auth-card {
+    padding: 22px;
+  }
+
+  .admin-panel {
+    grid-template-columns: 1fr;
   }
 }

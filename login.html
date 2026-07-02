@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11161c" />
+    <title>Login | ClovaChat</title>
+    <link rel="icon" href="/assets/clovachat-icon.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css?v=20260702-compact2" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="ClovaChat home">
+        <img src="/assets/clovachat-logo.png" alt="ClovaChat" />
+      </a>
+      <div class="header-actions">
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="/#premium">Premium</a>
+          <a href="/#features">Features</a>
+          <a href="/#download">Download</a>
+          <a href="/#faq">FAQ</a>
+        </nav>
+        <a class="nav-button" href="/">Home</a>
+      </div>
+    </header>
+
+    <main class="auth-page">
+      <section class="auth-card" aria-labelledby="authTitle">
+        <p class="eyebrow" id="authEyebrow">ADMIN ACCESS</p>
+        <h1 id="authTitle">Login to ClovaChat.</h1>
+        <p class="auth-copy" id="authCopy">Use your admin account to manage the site.</p>
+
+        <form id="authForm" class="auth-form">
+          <label>
+            Username
+            <input id="username" name="username" autocomplete="username" required />
+          </label>
+          <label>
+            Password
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="button button-primary" id="authSubmit" type="submit">Login</button>
+        </form>
+
+        <p class="form-status" id="authStatus" role="status"></p>
+      </section>
+    </main>
+
+    <script src="/auth.js"></script>
+  </body>
+</html>

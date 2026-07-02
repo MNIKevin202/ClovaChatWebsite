@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11161c" />
+    <title>Admin | ClovaChat</title>
+    <link rel="icon" href="/assets/clovachat-icon.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css?v=20260702-compact2" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="ClovaChat home">
+        <img src="/assets/clovachat-logo.png" alt="ClovaChat" />
+      </a>
+      <div class="header-actions">
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="/">Website</a>
+          <a href="/#premium">Premium</a>
+          <a href="/#download">Download</a>
+        </nav>
+        <button class="nav-button" id="logoutButton" type="button">Logout</button>
+      </div>
+    </header>
+
+    <main class="auth-page">
+      <section class="auth-card" aria-labelledby="adminTitle">
+        <p class="eyebrow">ADMIN</p>
+        <h1 id="adminTitle">ClovaChat admin.</h1>
+        <p class="auth-copy" id="adminCopy">Checking session...</p>
+        <div class="admin-panel">
+          <div>
+            <span class="admin-label">Signed in as</span>
+            <strong id="adminUsername">-</strong>
+          </div>
+          <div>
+            <span class="admin-label">Role</span>
+            <strong>Admin</strong>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/admin.js"></script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "clovachat-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ClovaChat website with first-run admin setup.",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check auth.js && node --check admin.js && node --check script.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
