@@ -1,12 +1,6 @@
 const form = document.querySelector("#authForm");
-const title = document.querySelector("#authTitle");
-const copy = document.querySelector("#authCopy");
-const eyebrow = document.querySelector("#authEyebrow");
 const statusText = document.querySelector("#authStatus");
 const submitButton = document.querySelector("#authSubmit");
-const passwordInput = document.querySelector("#password");
-
-let setupMode = false;
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
@@ -19,19 +13,14 @@ async function requestJson(url, options = {}) {
   return body;
 }
 
+function destinationFor(user) {
+  return user?.role === "admin" ? "/admin" : "/account";
+}
+
 async function loadAuthState() {
   const state = await requestJson("/api/auth/status");
   if (state.authenticated) {
-    window.location.href = "/admin";
-    return;
-  }
-  setupMode = !state.adminExists;
-  if (setupMode) {
-    eyebrow.textContent = "FIRST RUN";
-    title.textContent = "Create the first admin.";
-    copy.textContent = "No admin exists yet. Create the first account to lock down the site.";
-    submitButton.textContent = "Create Admin";
-    passwordInput.autocomplete = "new-password";
+    window.location.href = destinationFor(state.user);
   }
 }
 
@@ -41,14 +30,14 @@ form.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   const formData = new FormData(form);
   try {
-    await requestJson(setupMode ? "/api/auth/setup" : "/api/auth/login", {
+    const data = await requestJson("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({
         password: formData.get("password"),
         username: formData.get("username")
       })
     });
-    window.location.href = "/admin";
+    window.location.href = destinationFor(data.user);
   } catch (error) {
     statusText.textContent = error.message;
   } finally {

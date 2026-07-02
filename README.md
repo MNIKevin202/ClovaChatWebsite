@@ -11,7 +11,9 @@ npm start
 
 Open `http://localhost:4173`.
 
-On first run, visit `/login` to create the first admin account. After the first admin exists, `/login` switches to the normal login flow.
+Customers can create an account at `/signup` and sign in at `/login`.
+
+Admin accounts are not created from the public website. To bootstrap the first admin on a fresh deployment, set `ADMIN_USERNAME` and `ADMIN_PASSWORD` before starting the app. Once an admin exists, those variables will not create additional admins.
 
 The admin dashboard at `/admin` can generate:
 
@@ -34,3 +36,5 @@ Recommended environment variables:
 - `SESSION_SECRET`: long random string used to sign login cookies
 - `DATA_DIR`: persistent data directory for admin users and license codes, defaults to `./data`
 - `COOKIE_SECURE`: set to `true` when serving only over HTTPS
+- `ADMIN_USERNAME`: optional first-admin bootstrap username
+- `ADMIN_PASSWORD`: optional first-admin bootstrap password

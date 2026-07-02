@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#11161c" />
-    <title>Login | ClovaChat</title>
+    <title>Sign Up | ClovaChat</title>
     <link rel="icon" href="/assets/clovachat-icon.png" type="image/png" />
     <link rel="stylesheet" href="/styles.css?v=20260702-compact2" />
   </head>
@@ -20,33 +20,33 @@
           <a href="/#download">Download</a>
           <a href="/#faq">FAQ</a>
         </nav>
-        <a class="nav-button" href="/signup">Sign Up</a>
+        <a class="nav-button" href="/login">Login</a>
       </div>
     </header>
 
     <main class="auth-page">
-      <section class="auth-card" aria-labelledby="authTitle">
-        <p class="eyebrow" id="authEyebrow">CUSTOMER LOGIN</p>
-        <h1 id="authTitle">Sign in to ClovaChat.</h1>
-        <p class="auth-copy" id="authCopy">Use your customer account to manage your ClovaChat access.</p>
+      <section class="auth-card" aria-labelledby="signupTitle">
+        <p class="eyebrow">CUSTOMER SIGN UP</p>
+        <h1 id="signupTitle">Create your ClovaChat account.</h1>
+        <p class="auth-copy">Create a customer account for future purchases and license access.</p>
 
-        <form id="authForm" class="auth-form">
+        <form id="signupForm" class="auth-form">
           <label>
             Username
-            <input id="username" name="username" autocomplete="username" required />
+            <input name="username" autocomplete="username" required />
           </label>
           <label>
             Password
-            <input id="password" name="password" type="password" autocomplete="current-password" required />
+            <input name="password" type="password" autocomplete="new-password" required />
           </label>
-          <button class="button button-primary" id="authSubmit" type="submit">Login</button>
+          <button class="button button-primary" id="signupSubmit" type="submit">Create Account</button>
         </form>
 
-        <p class="auth-switch">New here? <a href="/signup">Create a customer account</a>.</p>
-        <p class="form-status" id="authStatus" role="status"></p>
+        <p class="auth-switch">Already have an account? <a href="/login">Sign in</a>.</p>
+        <p class="form-status" id="signupStatus" role="status"></p>
       </section>
     </main>
 
-    <script src="/auth.js"></script>
+    <script src="/signup.js"></script>
   </body>
 </html>

@@ -202,6 +202,29 @@ function adminExists() {
   return readUsers().some((user) => user.role === "admin");
 }
 
+function bootstrapAdminFromEnv() {
+  const username = normalizeUsername(process.env.ADMIN_USERNAME);
+  const password = String(process.env.ADMIN_PASSWORD || "");
+  if (!username || !password || adminExists()) return;
+  const validationError = validateCredentials(username, password);
+  if (validationError) {
+    console.warn(`Admin bootstrap skipped: ${validationError}`);
+    return;
+  }
+  const passwordParts = hashPassword(password);
+  const users = readUsers();
+  users.push({
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    passwordHash: passwordParts.hash,
+    passwordSalt: passwordParts.salt,
+    role: "admin",
+    username
+  });
+  writeUsers(users);
+  console.log(`Bootstrapped admin account: ${username}`);
+}
+
 function requireAdmin(req, res) {
   const session = readSession(req);
   if (!session || session.role !== "admin") {
@@ -296,19 +319,21 @@ async function handleApi(req, res, pathname) {
   if (pathname === "/api/auth/status" && req.method === "GET") {
     const session = readSession(req);
     return json(res, 200, {
-      adminExists: adminExists(),
       authenticated: Boolean(session),
       user: session ? { role: session.role, username: session.username } : null
     });
   }
 
-  if (pathname === "/api/auth/setup" && req.method === "POST") {
-    if (adminExists()) return json(res, 409, { error: "Admin account already exists." });
+  if (pathname === "/api/auth/register" && req.method === "POST") {
     const body = await readBody(req);
     const username = normalizeUsername(body.username);
     const password = String(body.password || "");
     const validationError = validateCredentials(username, password);
     if (validationError) return json(res, 400, { error: validationError });
+    const users = readUsers();
+    if (users.some((user) => user.username === username)) {
+      return json(res, 409, { error: "That username is already taken." });
+    }
 
     const passwordParts = hashPassword(password);
     const user = {
@@ -316,10 +341,11 @@ async function handleApi(req, res, pathname) {
       createdAt: new Date().toISOString(),
       passwordHash: passwordParts.hash,
       passwordSalt: passwordParts.salt,
-      role: "admin",
+      role: "customer",
       username
     };
-    writeUsers([user]);
+    users.push(user);
+    writeUsers(users);
     setSessionCookie(res, createSession(user));
     return json(res, 201, { user: { role: user.role, username: user.username } });
   }
@@ -459,6 +485,8 @@ function sendFile(res, filePath) {
 function staticPath(pathname) {
   if (pathname === "/") return path.join(ROOT, "index.html");
   if (pathname === "/login") return path.join(ROOT, "login.html");
+  if (pathname === "/signup") return path.join(ROOT, "signup.html");
+  if (pathname === "/account") return path.join(ROOT, "account.html");
   if (pathname === "/admin") return path.join(ROOT, "admin.html");
   const decoded = decodeURIComponent(pathname);
   const filePath = path.normalize(path.join(ROOT, decoded));
@@ -482,6 +510,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 ensureDataDir();
+bootstrapAdminFromEnv();
 server.listen(PORT, () => {
   console.log(`ClovaChat website listening on ${PORT}`);
 });

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11161c" />
+    <title>Account | ClovaChat</title>
+    <link rel="icon" href="/assets/clovachat-icon.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css?v=20260702-compact2" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="ClovaChat home">
+        <img src="/assets/clovachat-logo.png" alt="ClovaChat" />
+      </a>
+      <div class="header-actions">
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="/">Website</a>
+          <a href="/#premium">Premium</a>
+          <a href="/#download">Download</a>
+        </nav>
+        <button class="nav-button" id="accountLogoutButton" type="button">Logout</button>
+      </div>
+    </header>
+
+    <main class="auth-page">
+      <section class="auth-card" aria-labelledby="accountTitle">
+        <p class="eyebrow">CUSTOMER ACCOUNT</p>
+        <h1 id="accountTitle">Your ClovaChat account.</h1>
+        <p class="auth-copy" id="accountCopy">Checking session...</p>
+        <div class="admin-panel">
+          <div>
+            <span class="admin-label">Signed in as</span>
+            <strong id="accountUsername">-</strong>
+          </div>
+          <div>
+            <span class="admin-label">Role</span>
+            <strong id="accountRole">Customer</strong>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/account.js"></script>
+  </body>
+</html>
