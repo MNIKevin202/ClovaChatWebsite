@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="ClovaChat is a Twitch chat desktop app for channels, popups, timers, scripts, emotes, and organized creator workflows."
+      content="ClovaChat is a desktop Twitch chat app for channels, popups, scripts, timers, and organized stream workflows."
     />
-    <meta name="theme-color" content="#14191f" />
+    <meta name="theme-color" content="#11161c" />
     <meta property="og:title" content="ClovaChat" />
     <meta
       property="og:description"
-      content="A Twitch chat desktop app for channels, popups, timers, scripts, emotes, and organized creator workflows."
+      content="A desktop Twitch chat app for channels, popups, scripts, timers, and organized stream workflows."
     />
     <meta property="og:image" content="/assets/clovachat-logo.png" />
     <title>ClovaChat</title>
@@ -23,56 +23,54 @@
       <a class="brand" href="#top" aria-label="ClovaChat home">
         <img src="/assets/clovachat-logo.png" alt="ClovaChat" />
       </a>
-      <nav class="site-nav" aria-label="Primary navigation">
-        <a href="#premium">Premium</a>
-        <a href="#features">Features</a>
-        <a href="#download">Download</a>
-        <a href="#faq">FAQ</a>
-      </nav>
-      <a class="nav-button" href="#premium">Get Premium</a>
+      <div class="header-actions">
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="#premium">Premium</a>
+          <a href="#features">Features</a>
+          <a href="#download">Download</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <a class="nav-button" href="#premium">Get Premium</a>
+      </div>
     </header>
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <p class="eyebrow">Twitch Chat Desktop App</p>
-          <h1 id="hero-title">Twitch chat, popups, timers, and scripts in one clean desktop app.</h1>
-          <p class="hero-text">
-            ClovaChat helps streamers and chatters manage channels, automate quick actions,
-            run timers, and keep Twitch workflows organized without clutter.
-          </p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="#download">Download App</a>
-            <a class="button button-secondary" href="#premium">View Premium</a>
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <p class="eyebrow">TWITCH CHAT DESKTOP APP</p>
+            <h1 id="hero-title">A cleaner desktop home for Twitch chat.</h1>
+            <p class="hero-text">
+              Manage channels, popups, scripts, timers, and stream workflows from
+              one focused app built for macOS and Windows.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#download">Download App</a>
+              <a class="button button-secondary" href="#premium">View Premium</a>
+            </div>
           </div>
-        </div>
 
-        <div class="product-stage" aria-label="ClovaChat app preview">
-          <div class="app-window">
-            <img src="/assets/clovachat-app.png" alt="ClovaChat Streams and Chat screen" />
-          </div>
-          <div class="premium-badge" aria-label="Lifetime Premium price">
-            <span>$29.99</span>
-            <strong>Lifetime</strong>
+          <div class="product-card" aria-label="ClovaChat app screenshot">
+            <img src="/assets/clovachat-app.png" alt="ClovaChat desktop app interface" />
           </div>
         </div>
       </section>
 
       <section class="section" id="premium" aria-labelledby="premium-title">
         <div class="section-heading">
-          <p class="eyebrow">Premium</p>
+          <p class="eyebrow">PREMIUM</p>
           <h2 id="premium-title">Simple pricing.</h2>
-          <p class="section-copy">Start free, upgrade once when you want everything unlocked.</p>
+          <p>Start free, upgrade once when you want everything unlocked.</p>
         </div>
 
         <div class="pricing-grid">
           <article class="card plan-card">
-            <div class="plan-header">
+            <div class="plan-top">
               <div>
                 <h3>Free</h3>
                 <p>Good for trying ClovaChat</p>
               </div>
-              <strong>$0</strong>
+              <div class="price">$0</div>
             </div>
             <ul class="check-list">
               <li>1 server/account</li>
@@ -84,13 +82,13 @@
             </ul>
           </article>
 
-          <article class="card plan-card plan-card-premium">
-            <div class="plan-header">
+          <article class="card plan-card featured-plan">
+            <div class="plan-top">
               <div>
                 <h3>Lifetime Premium</h3>
                 <p>One purchase. No subscription.</p>
               </div>
-              <strong>$29.99 <span>plus tax</span></strong>
+              <div class="price">$29.99 <span>plus tax</span></div>
             </div>
             <ul class="check-list">
               <li>Unlimited servers/accounts</li>
@@ -107,7 +105,7 @@
 
       <section class="section" id="features" aria-labelledby="features-title">
         <div class="section-heading">
-          <p class="eyebrow">Features</p>
+          <p class="eyebrow">FEATURES</p>
           <h2 id="features-title">Built for real Twitch workflows.</h2>
         </div>
 
@@ -145,19 +143,21 @@
         </div>
       </section>
 
-      <section class="download-band" id="download" aria-labelledby="download-title">
-        <div>
-          <p class="eyebrow">Download</p>
-          <h2 id="download-title">Download ClovaChat.</h2>
-          <p>Grab the latest desktop build from GitHub Releases.</p>
+      <section class="section compact-section" id="download" aria-labelledby="download-title">
+        <div class="download-card">
+          <div>
+            <p class="eyebrow">DOWNLOAD</p>
+            <h2 id="download-title">Download ClovaChat</h2>
+            <p>Get the latest desktop build from GitHub Releases.</p>
+          </div>
+          <a class="button button-secondary" href="https://github.com/MNIKevin202/ClovaChat/releases/latest">Open GitHub Releases</a>
         </div>
-        <a class="button button-secondary" href="https://github.com/MNIKevin202/ClovaChat/releases/latest">Open GitHub Releases</a>
       </section>
 
-      <section class="section faq-section" id="faq" aria-labelledby="faq-title">
+      <section class="section compact-section" id="faq" aria-labelledby="faq-title">
         <div class="section-heading">
           <p class="eyebrow">FAQ</p>
-          <h2 id="faq-title">Questions.</h2>
+          <h2 id="faq-title">Questions</h2>
         </div>
         <div class="faq-list">
           <details>
