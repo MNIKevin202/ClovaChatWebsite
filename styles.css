@@ -81,27 +81,15 @@ a {
 }
 
 .brand {
-  gap: 10px;
-  font-size: 1.12rem;
-  font-weight: 900;
-  letter-spacing: 0;
+  width: clamp(148px, 16vw, 190px);
+  min-width: 0;
 }
 
-.brand span span {
-  color: var(--purple);
-}
-
-.brand-mark {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border: 2px solid rgba(219, 202, 255, 0.85);
-  border-radius: 10px;
-  color: #fff;
-  box-shadow:
-    0 0 20px rgba(154, 92, 255, 0.8),
-    inset 0 0 12px rgba(154, 92, 255, 0.28);
+.brand img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 0 16px rgba(154, 92, 255, 0.72));
 }
 
 .site-nav {
@@ -516,7 +504,7 @@ h3 {
   }
 
   .brand {
-    font-size: 1rem;
+    width: 128px;
   }
 
   .nav-button {
