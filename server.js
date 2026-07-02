@@ -202,6 +202,13 @@ function adminExists() {
   return readUsers().some((user) => user.role === "admin");
 }
 
+function publicUser(user) {
+  return {
+    role: user.role,
+    username: user.username
+  };
+}
+
 function bootstrapAdminFromEnv() {
   const username = normalizeUsername(process.env.ADMIN_USERNAME);
   const password = String(process.env.ADMIN_PASSWORD || "");
@@ -325,7 +332,43 @@ async function handleApi(req, res, pathname) {
     return json(res, 200, {
       authenticated: Boolean(session),
       redirectTo: session ? destinationForRole(session.role) : null,
-      user: session ? { role: session.role, username: session.username } : null
+      user: session ? publicUser(session) : null
+    });
+  }
+
+  if (pathname === "/api/admin/setup-status" && req.method === "GET") {
+    return json(res, 200, { available: !adminExists() });
+  }
+
+  if (pathname === "/api/admin/setup" && req.method === "POST") {
+    if (adminExists()) {
+      return json(res, 409, { error: "Admin setup is already complete." });
+    }
+    const body = await readBody(req);
+    const username = normalizeUsername(body.username);
+    const password = String(body.password || "");
+    const validationError = validateCredentials(username, password);
+    if (validationError) return json(res, 400, { error: validationError });
+    const users = readUsers();
+    if (users.some((user) => user.username === username)) {
+      return json(res, 409, { error: "That username is already taken." });
+    }
+
+    const passwordParts = hashPassword(password);
+    const user = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      passwordHash: passwordParts.hash,
+      passwordSalt: passwordParts.salt,
+      role: "admin",
+      username
+    };
+    users.push(user);
+    writeUsers(users);
+    setSessionCookie(res, createSession(user));
+    return json(res, 201, {
+      redirectTo: destinationForRole(user.role),
+      user: publicUser(user)
     });
   }
 
@@ -354,7 +397,7 @@ async function handleApi(req, res, pathname) {
     setSessionCookie(res, createSession(user));
     return json(res, 201, {
       redirectTo: destinationForRole(user.role),
-      user: { role: user.role, username: user.username }
+      user: publicUser(user)
     });
   }
 
@@ -369,7 +412,7 @@ async function handleApi(req, res, pathname) {
     setSessionCookie(res, createSession(user));
     return json(res, 200, {
       redirectTo: destinationForRole(user.role),
-      user: { role: user.role, username: user.username }
+      user: publicUser(user)
     });
   }
 
@@ -381,7 +424,7 @@ async function handleApi(req, res, pathname) {
   if (pathname === "/api/admin/me" && req.method === "GET") {
     const session = requireAdmin(req, res);
     if (!session) return;
-    return json(res, 200, { user: { role: session.role, username: session.username } });
+    return json(res, 200, { user: publicUser(session) });
   }
 
   if (pathname === "/api/admin/licenses" && req.method === "GET") {
@@ -499,6 +542,7 @@ function staticPath(pathname) {
   if (pathname === "/signup") return path.join(ROOT, "signup.html");
   if (pathname === "/account") return path.join(ROOT, "account.html");
   if (pathname === "/admin") return path.join(ROOT, "admin.html");
+  if (pathname === "/admin/setup") return path.join(ROOT, "admin-setup.html");
   const decoded = decodeURIComponent(pathname);
   const filePath = path.normalize(path.join(ROOT, decoded));
   if (!filePath.startsWith(ROOT)) return null;

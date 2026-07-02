@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11161c" />
+    <title>Admin Setup | ClovaChat</title>
+    <link rel="icon" href="/assets/clovachat-icon.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css?v=20260702-compact2" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="ClovaChat home">
+        <img src="/assets/clovachat-logo.png" alt="ClovaChat" />
+      </a>
+      <div class="header-actions">
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="/#premium">Premium</a>
+          <a href="/#features">Features</a>
+          <a href="/#download">Download</a>
+          <a href="/#faq">FAQ</a>
+        </nav>
+        <a class="nav-button" href="/login">Login</a>
+      </div>
+    </header>
+
+    <main class="auth-page">
+      <section class="auth-card" aria-labelledby="setupTitle">
+        <p class="eyebrow">ONE-TIME ADMIN SETUP</p>
+        <h1 id="setupTitle">Create the first admin account.</h1>
+        <p class="auth-copy">This setup locks after the first admin is created.</p>
+
+        <form id="adminSetupForm" class="auth-form">
+          <label>
+            Admin Username
+            <input name="username" autocomplete="username" required />
+          </label>
+          <label>
+            Admin Password
+            <input name="password" type="password" autocomplete="new-password" required />
+          </label>
+          <button class="button button-primary" id="adminSetupSubmit" type="submit">Create Admin</button>
+        </form>
+
+        <p class="auth-switch">Already created? <a href="/login">Sign in</a>.</p>
+        <p class="form-status" id="adminSetupStatus" role="status"></p>
+      </section>
+    </main>
+
+    <script src="/admin-setup.js"></script>
+  </body>
+</html>

@@ -13,7 +13,7 @@ Open `http://localhost:4173`.
 
 Customers can create an account at `/signup` and sign in at `/login`.
 
-Admin accounts are not created from the public website. To bootstrap the first admin on a fresh deployment, set `ADMIN_USERNAME` and `ADMIN_PASSWORD` before starting the app. Once an admin exists, those variables will not create additional admins.
+Create the first admin account at `/admin/setup` on a fresh deployment. That setup route locks after one admin exists, so it cannot create additional admins. You can also bootstrap the first admin by setting `ADMIN_USERNAME` and `ADMIN_PASSWORD` before starting the app; those variables are ignored once an admin exists.
 
 The admin dashboard at `/admin` can generate:
 
