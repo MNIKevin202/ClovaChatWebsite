@@ -16,7 +16,7 @@ async function requestJson(url, options = {}) {
 async function loadSignupState() {
   const state = await requestJson("/api/auth/status");
   if (state.authenticated) {
-    window.location.href = state.user?.role === "admin" ? "/admin" : "/account";
+    window.location.href = state.redirectTo || (state.user?.role === "admin" ? "/admin" : "/account");
   }
 }
 
@@ -33,7 +33,7 @@ signupForm.addEventListener("submit", async (event) => {
         username: formData.get("username")
       })
     });
-    window.location.href = "/account";
+    window.location.href = data.redirectTo || "/account";
   } catch (error) {
     signupStatus.textContent = error.message;
   } finally {

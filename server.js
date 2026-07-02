@@ -234,6 +234,10 @@ function requireAdmin(req, res) {
   return session;
 }
 
+function destinationForRole(role) {
+  return role === "admin" ? "/admin" : "/account";
+}
+
 function generateLicenseCode() {
   let code = "";
   const random = crypto.randomBytes(LICENSE_CODE_LENGTH);
@@ -320,6 +324,7 @@ async function handleApi(req, res, pathname) {
     const session = readSession(req);
     return json(res, 200, {
       authenticated: Boolean(session),
+      redirectTo: session ? destinationForRole(session.role) : null,
       user: session ? { role: session.role, username: session.username } : null
     });
   }
@@ -347,7 +352,10 @@ async function handleApi(req, res, pathname) {
     users.push(user);
     writeUsers(users);
     setSessionCookie(res, createSession(user));
-    return json(res, 201, { user: { role: user.role, username: user.username } });
+    return json(res, 201, {
+      redirectTo: destinationForRole(user.role),
+      user: { role: user.role, username: user.username }
+    });
   }
 
   if (pathname === "/api/auth/login" && req.method === "POST") {
@@ -359,7 +367,10 @@ async function handleApi(req, res, pathname) {
       return json(res, 401, { error: "Invalid username or password." });
     }
     setSessionCookie(res, createSession(user));
-    return json(res, 200, { user: { role: user.role, username: user.username } });
+    return json(res, 200, {
+      redirectTo: destinationForRole(user.role),
+      user: { role: user.role, username: user.username }
+    });
   }
 
   if (pathname === "/api/auth/logout" && req.method === "POST") {

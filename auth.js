@@ -20,7 +20,7 @@ function destinationFor(user) {
 async function loadAuthState() {
   const state = await requestJson("/api/auth/status");
   if (state.authenticated) {
-    window.location.href = destinationFor(state.user);
+    window.location.href = state.redirectTo || destinationFor(state.user);
   }
 }
 
@@ -37,7 +37,7 @@ form.addEventListener("submit", async (event) => {
         username: formData.get("username")
       })
     });
-    window.location.href = destinationFor(data.user);
+    window.location.href = data.redirectTo || destinationFor(data.user);
   } catch (error) {
     statusText.textContent = error.message;
   } finally {
