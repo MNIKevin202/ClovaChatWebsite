@@ -588,6 +588,197 @@ h3 {
   font-size: 1.1rem;
 }
 
+.admin-page {
+  width: min(var(--max), calc(100% - 48px));
+  margin: 0 auto;
+  padding: 72px 0 88px;
+}
+
+.admin-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+  margin-bottom: 28px;
+}
+
+.admin-hero h1 {
+  margin-bottom: 10px;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.admin-hero p:not(.eyebrow) {
+  margin-bottom: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.admin-summary {
+  min-width: 220px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.license-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.42fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.license-form,
+.license-list {
+  padding: 24px;
+}
+
+.license-form {
+  display: grid;
+  gap: 16px;
+}
+
+.license-form .section-heading,
+.license-list .section-heading {
+  margin-bottom: 2px;
+}
+
+.license-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--text);
+  font-size: 0.94rem;
+  font-weight: 850;
+}
+
+.license-form input,
+.license-form select,
+.license-form textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(178, 194, 210, 0.2);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: rgba(11, 16, 22, 0.86);
+  font: inherit;
+}
+
+.license-form textarea {
+  min-height: 92px;
+  padding-top: 12px;
+  resize: vertical;
+}
+
+.license-form input:focus,
+.license-form select:focus,
+.license-form textarea:focus {
+  outline: none;
+  border-color: rgba(57, 214, 228, 0.62);
+  box-shadow: 0 0 0 3px rgba(57, 214, 228, 0.12);
+}
+
+.duration-row {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 12px;
+}
+
+.license-list-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.license-table {
+  display: grid;
+  gap: 12px;
+}
+
+.license-row {
+  display: grid;
+  grid-template-columns: minmax(250px, 1.4fr) minmax(90px, 0.55fr) minmax(150px, 0.8fr) minmax(100px, 0.55fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid rgba(178, 194, 210, 0.13);
+  border-radius: var(--radius);
+  background: rgba(13, 18, 24, 0.5);
+}
+
+.license-code-block {
+  min-width: 0;
+}
+
+.license-row code {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--cyan);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.license-row strong {
+  color: var(--text);
+  font-size: 0.96rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  min-height: 24px;
+  padding: 0 10px;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  text-transform: capitalize;
+}
+
+.status-active {
+  color: #9df7bd;
+  background: rgba(125, 223, 157, 0.12);
+}
+
+.status-expired,
+.status-revoked {
+  color: #ffb4ae;
+  background: rgba(255, 130, 123, 0.12);
+}
+
+.license-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.license-actions .button {
+  min-height: 34px;
+  padding-inline: 10px;
+  font-size: 0.84rem;
+}
+
+.license-note {
+  grid-column: 1 / -1;
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.empty-state {
+  margin: 0;
+  padding: 18px;
+  border: 1px dashed rgba(178, 194, 210, 0.2);
+  border-radius: var(--radius);
+  color: var(--muted);
+}
+
+.form-status.is-ok {
+  color: #9df7bd;
+}
+
 @media (max-width: 960px) {
   .hero,
   .section {
@@ -688,5 +879,29 @@ h3 {
 
   .admin-panel {
     grid-template-columns: 1fr;
+  }
+
+  .admin-page {
+    width: calc(100% - 32px);
+    padding: 56px 0;
+  }
+
+  .admin-hero,
+  .license-list-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .license-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .license-row {
+    grid-template-columns: 1fr;
+  }
+
+  .license-actions,
+  .license-actions .button {
+    width: 100%;
   }
 }

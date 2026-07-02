@@ -23,21 +23,74 @@
       </div>
     </header>
 
-    <main class="auth-page">
-      <section class="auth-card" aria-labelledby="adminTitle">
-        <p class="eyebrow">ADMIN</p>
-        <h1 id="adminTitle">ClovaChat admin.</h1>
-        <p class="auth-copy" id="adminCopy">Checking session...</p>
-        <div class="admin-panel">
-          <div>
-            <span class="admin-label">Signed in as</span>
-            <strong id="adminUsername">-</strong>
-          </div>
-          <div>
-            <span class="admin-label">Role</span>
-            <strong>Admin</strong>
-          </div>
+    <main class="admin-page">
+      <section class="admin-hero" aria-labelledby="adminTitle">
+        <div>
+          <p class="eyebrow">ADMIN</p>
+          <h1 id="adminTitle">License dashboard.</h1>
+          <p id="adminCopy">Create trials and lifetime licenses for ClovaChat.</p>
         </div>
+        <div class="admin-summary">
+          <span class="admin-label">Signed in as</span>
+          <strong id="adminUsername">-</strong>
+        </div>
+      </section>
+
+      <section class="license-layout">
+        <form class="license-form card" id="licenseForm">
+          <div class="section-heading">
+            <p class="eyebrow">CREATE</p>
+            <h2>New license</h2>
+          </div>
+
+          <label>
+            License type
+            <select id="licenseType" name="type">
+              <option value="trial">Trial</option>
+              <option value="lifetime">Lifetime</option>
+            </select>
+          </label>
+
+          <div class="duration-row" id="durationRow">
+            <label>
+              Amount
+              <input id="durationAmount" name="durationAmount" type="number" min="1" max="1000" value="14" />
+            </label>
+            <label>
+              Unit
+              <select id="durationUnit" name="durationUnit">
+                <option value="days">Days</option>
+                <option value="weeks">Weeks</option>
+                <option value="months">Months</option>
+                <option value="years">Years</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            Label
+            <input id="licenseLabel" name="label" maxlength="80" placeholder="Customer or order note" />
+          </label>
+
+          <label>
+            Notes
+            <textarea id="licenseNotes" name="notes" maxlength="500" placeholder="Internal note"></textarea>
+          </label>
+
+          <button class="button button-primary" type="submit">Create License</button>
+          <p class="form-status" id="licenseStatus" role="status"></p>
+        </form>
+
+        <section class="license-list card" aria-labelledby="licensesTitle">
+          <div class="license-list-header">
+            <div>
+              <p class="eyebrow">LICENSES</p>
+              <h2 id="licensesTitle">Generated codes</h2>
+            </div>
+            <button class="button button-secondary" id="refreshLicenses" type="button">Refresh</button>
+          </div>
+          <div class="license-table" id="licenseTable"></div>
+        </section>
       </section>
     </main>
 
