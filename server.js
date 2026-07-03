@@ -16,6 +16,7 @@ const SESSION_COOKIE = "clovachat_session";
 const SESSION_DAYS = 7;
 const APP_TOKEN_DAYS = 30;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+const ADMIN_APP_TEST_CODE = process.env.ADMIN_APP_TEST_CODE || "123456";
 const LICENSE_CODE_LENGTH = 62;
 const LICENSE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
@@ -410,6 +411,19 @@ function publicAppLicense(license, accountUsername = "") {
   };
 }
 
+function publicAdminAppLicense(user, deviceId) {
+  return {
+    activatedAt: new Date().toISOString(),
+    accountUsername: user.username,
+    deviceId,
+    expiresAt: null,
+    source: "account",
+    status: "active",
+    tier: "premium",
+    type: "lifetime"
+  };
+}
+
 function normalizeLicenseCode(code) {
   return String(code || "").trim();
 }
@@ -695,11 +709,23 @@ async function handleApi(req, res, pathname) {
     const body = await readBody(req);
     const username = normalizeUsername(body.username);
     const password = String(body.password || "");
+    const verificationCode = String(body.verificationCode || "").trim();
     const deviceId = String(body.deviceId || "").trim();
     if (!validateDeviceId(deviceId)) return appJson(res, 400, { error: "Invalid device identifier." });
     const user = (await readUsers()).find((candidate) => candidate.username === username);
-    if (!user || user.role !== "customer" || !verifyPassword(password, user)) {
+    if (!user || !["admin", "customer"].includes(user.role) || !verifyPassword(password, user)) {
       return appJson(res, 401, { error: "Invalid username or password." });
+    }
+    if (user.role === "admin" && verificationCode !== ADMIN_APP_TEST_CODE) {
+      return appJson(res, 401, { error: "Enter the 6-digit admin verification code." });
+    }
+    if (user.role === "admin") {
+      return appJson(res, 200, {
+        premium: publicAdminAppLicense(user, deviceId),
+        premiumError: "",
+        token: createAppToken(user),
+        user: publicUser(user)
+      });
     }
     const premium = await assignedPremiumForUser(user, deviceId, { bindDevice: true });
     return appJson(res, 200, {
@@ -716,7 +742,14 @@ async function handleApi(req, res, pathname) {
     const deviceId = String(new URL(req.url, `http://${req.headers.host || "localhost"}`).searchParams.get("deviceId") || "").trim();
     if (!validateDeviceId(deviceId)) return appJson(res, 400, { error: "Invalid device identifier." });
     const user = (await readUsers()).find((candidate) => candidate.id === session.sub && candidate.username === session.username);
-    if (!user || user.role !== "customer") return appJson(res, 401, { error: "Login required." });
+    if (!user || !["admin", "customer"].includes(user.role)) return appJson(res, 401, { error: "Login required." });
+    if (user.role === "admin") {
+      return appJson(res, 200, {
+        premium: publicAdminAppLicense(user, deviceId),
+        premiumError: "",
+        user: publicUser(user)
+      });
+    }
     const premium = await assignedPremiumForUser(user, deviceId, { bindDevice: true });
     return appJson(res, 200, {
       premium: premium.license,
