@@ -2,9 +2,13 @@ const adminCopy = document.querySelector("#adminCopy");
 const adminUsername = document.querySelector("#adminUsername");
 const durationRow = document.querySelector("#durationRow");
 const licenseForm = document.querySelector("#licenseForm");
+const licenseActive = document.querySelector("#licenseActive");
+const licenseActivated = document.querySelector("#licenseActivated");
+const licenseLifetime = document.querySelector("#licenseLifetime");
 const licenseStatus = document.querySelector("#licenseStatus");
 const licenseTable = document.querySelector("#licenseTable");
 const licenseType = document.querySelector("#licenseType");
+const licenseTotal = document.querySelector("#licenseTotal");
 const logoutButton = document.querySelector("#logoutButton");
 const refreshLicenses = document.querySelector("#refreshLicenses");
 
@@ -32,32 +36,39 @@ function licenseTypeLabel(license) {
   return `Trial: ${license.durationAmount} ${license.durationUnit}`;
 }
 
+function updateStats(licenses) {
+  licenseTotal.textContent = licenses.length;
+  licenseActive.textContent = licenses.filter((license) => license.status === "active").length;
+  licenseActivated.textContent = licenses.filter((license) => license.deviceId).length;
+  licenseLifetime.textContent = licenses.filter((license) => license.type === "lifetime").length;
+}
+
 function setStatus(message, isError = false) {
   licenseStatus.textContent = message;
   licenseStatus.classList.toggle("is-ok", Boolean(message && !isError));
 }
 
 function renderLicenses(licenses) {
+  updateStats(licenses);
   if (!licenses.length) {
-    licenseTable.innerHTML = '<p class="empty-state">No licenses yet.</p>';
+    licenseTable.innerHTML = '<p class="empty-state">No licenses yet. Create a trial or lifetime key to get started.</p>';
     return;
   }
 
   licenseTable.innerHTML = licenses.map((license) => `
-    <article class="license-row" data-id="${license.id}">
+    <article class="license-row status-border-${license.status}" data-id="${license.id}">
       <div class="license-code-block">
-        <span class="admin-label">${licenseTypeLabel(license)}</span>
+        <div class="license-card-top">
+          <span class="license-type">${licenseTypeLabel(license)}</span>
+          <strong class="status-pill status-${license.status}">${license.status}</strong>
+        </div>
         <code>${license.code}</code>
       </div>
-      <div>
-        <span class="admin-label">Status</span>
-        <strong class="status-pill status-${license.status}">${license.status}</strong>
-      </div>
-      <div>
+      <div class="license-meta">
         <span class="admin-label">Expires</span>
         <strong>${formatDate(license.expiresAt)}</strong>
       </div>
-      <div>
+      <div class="license-meta">
         <span class="admin-label">Device</span>
         <strong>${license.deviceId ? "Activated" : "Unused"}</strong>
       </div>

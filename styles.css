@@ -608,20 +608,20 @@ h3 {
 .admin-page {
   width: min(var(--max), calc(100% - 48px));
   margin: 0 auto;
-  padding: 72px 0 88px;
+  padding: 56px 0 88px;
 }
 
 .admin-hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: flex-end;
-  margin-bottom: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 16px;
 }
 
 .admin-hero h1 {
-  margin-bottom: 10px;
-  font-size: clamp(2rem, 4vw, 3rem);
+  margin-bottom: 8px;
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
 }
 
 .admin-hero p:not(.eyebrow) {
@@ -631,16 +631,70 @@ h3 {
 }
 
 .admin-summary {
-  min-width: 220px;
-  padding: 16px;
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  padding: 18px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--panel);
+  background:
+    linear-gradient(135deg, rgba(57, 214, 228, 0.1), rgba(156, 102, 255, 0.08)),
+    rgba(21, 27, 34, 0.86);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+}
+
+.admin-summary strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 1.2rem;
+  text-overflow: ellipsis;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.admin-stats article {
+  padding: 16px;
+  border: 1px solid rgba(178, 194, 210, 0.13);
+  border-radius: var(--radius);
+  background: rgba(21, 27, 34, 0.7);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+}
+
+.admin-stats strong {
+  display: block;
+  color: var(--text);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.admin-card-heading {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.admin-card-heading h2,
+.license-list-header h2 {
+  margin-bottom: 0;
+  font-size: clamp(1.35rem, 2vw, 1.7rem);
+}
+
+.admin-card-heading p:not(.eyebrow),
+.license-list-header p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 
 .license-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 0.42fr) minmax(0, 1fr);
+  grid-template-columns: minmax(320px, 0.38fr) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
@@ -653,6 +707,11 @@ h3 {
 .license-form {
   display: grid;
   gap: 16px;
+  position: sticky;
+  top: 92px;
+  background:
+    radial-gradient(circle at top right, rgba(57, 214, 228, 0.12), transparent 36%),
+    var(--panel);
 }
 
 .license-form .section-heading,
@@ -706,7 +765,9 @@ h3 {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(178, 194, 210, 0.12);
 }
 
 .license-table {
@@ -716,17 +777,52 @@ h3 {
 
 .license-row {
   display: grid;
-  grid-template-columns: minmax(250px, 1.4fr) minmax(90px, 0.55fr) minmax(150px, 0.8fr) minmax(100px, 0.55fr) auto;
+  grid-template-columns: minmax(260px, 1fr) minmax(150px, 0.48fr) minmax(120px, 0.36fr) auto;
   gap: 14px;
   align-items: center;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid rgba(178, 194, 210, 0.13);
   border-radius: var(--radius);
-  background: rgba(13, 18, 24, 0.5);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.025), transparent),
+    rgba(13, 18, 24, 0.64);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.license-row:hover {
+  border-color: rgba(57, 214, 228, 0.28);
+  background-color: rgba(18, 25, 32, 0.82);
+  transform: translateY(-1px);
+}
+
+.status-border-active {
+  border-left: 3px solid rgba(125, 223, 157, 0.82);
+}
+
+.status-border-expired,
+.status-border-revoked {
+  border-left: 3px solid rgba(255, 130, 123, 0.82);
 }
 
 .license-code-block {
   min-width: 0;
+}
+
+.license-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 9px;
+}
+
+.license-type {
+  color: var(--text);
+  font-size: 0.96rem;
+  font-weight: 900;
 }
 
 .license-row code {
@@ -738,6 +834,10 @@ h3 {
   font-size: 0.86rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.license-meta {
+  min-width: 0;
 }
 
 .license-row strong {
@@ -769,6 +869,7 @@ h3 {
 .license-actions {
   display: flex;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 .license-actions .button {
@@ -779,7 +880,8 @@ h3 {
 
 .license-note {
   grid-column: 1 / -1;
-  margin: -2px 0 0;
+  margin: 0;
+  padding-top: 4px;
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -809,6 +911,27 @@ h3 {
 
   .product-card {
     max-width: 760px;
+  }
+
+  .admin-hero,
+  .license-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .license-form {
+    position: static;
+  }
+
+  .admin-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .license-row {
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 0.45fr);
+  }
+
+  .license-actions {
+    justify-content: flex-start;
   }
 }
 
@@ -903,18 +1026,20 @@ h3 {
     padding: 56px 0;
   }
 
-  .admin-hero,
   .license-list-header {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .license-layout {
+  .admin-stats,
+  .license-row {
     grid-template-columns: 1fr;
   }
 
-  .license-row {
-    grid-template-columns: 1fr;
+  .admin-stats article,
+  .license-form,
+  .license-list {
+    padding: 18px;
   }
 
   .license-actions,

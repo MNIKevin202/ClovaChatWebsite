@@ -27,7 +27,7 @@
       <section class="admin-hero" aria-labelledby="adminTitle">
         <div>
           <p class="eyebrow">ADMIN</p>
-          <h1 id="adminTitle">License dashboard.</h1>
+          <h1 id="adminTitle">License dashboard</h1>
           <p id="adminCopy">Create trials and lifetime licenses for ClovaChat.</p>
         </div>
         <div class="admin-summary">
@@ -36,11 +36,31 @@
         </div>
       </section>
 
+      <section class="admin-stats" aria-label="License summary">
+        <article>
+          <span class="admin-label">Total</span>
+          <strong id="licenseTotal">0</strong>
+        </article>
+        <article>
+          <span class="admin-label">Active</span>
+          <strong id="licenseActive">0</strong>
+        </article>
+        <article>
+          <span class="admin-label">Activated</span>
+          <strong id="licenseActivated">0</strong>
+        </article>
+        <article>
+          <span class="admin-label">Lifetime</span>
+          <strong id="licenseLifetime">0</strong>
+        </article>
+      </section>
+
       <section class="license-layout">
         <form class="license-form card" id="licenseForm">
-          <div class="section-heading">
+          <div class="admin-card-heading">
             <p class="eyebrow">CREATE</p>
             <h2>New license</h2>
+            <p>Generate a trial or lifetime registration key.</p>
           </div>
 
           <label>
@@ -86,6 +106,7 @@
             <div>
               <p class="eyebrow">LICENSES</p>
               <h2 id="licensesTitle">Generated codes</h2>
+              <p>Newest licenses appear first.</p>
             </div>
             <button class="button button-secondary" id="refreshLicenses" type="button">Refresh</button>
           </div>
