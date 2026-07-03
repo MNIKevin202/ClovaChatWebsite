@@ -1,4 +1,5 @@
 const form = document.querySelector("#authForm");
+const adminSetupLink = document.querySelector("#adminSetupLink");
 const statusText = document.querySelector("#authStatus");
 const submitButton = document.querySelector("#authSubmit");
 
@@ -21,6 +22,12 @@ async function loadAuthState() {
   const state = await requestJson("/api/auth/status");
   if (state.authenticated) {
     window.location.href = state.redirectTo || destinationFor(state.user);
+    return;
+  }
+
+  if (adminSetupLink) {
+    const setupState = await requestJson("/api/admin/setup-status");
+    adminSetupLink.hidden = !setupState.available;
   }
 }
 

@@ -123,9 +123,16 @@ licenseForm.addEventListener("submit", async (event) => {
 });
 
 licenseTable.addEventListener("click", async (event) => {
-  const copyCode = event.target.closest("[data-copy]")?.dataset.copy;
+  const copyButton = event.target.closest("[data-copy]");
+  const copyCode = copyButton?.dataset.copy;
   if (copyCode) {
     await navigator.clipboard?.writeText(copyCode).catch(() => {});
+    copyButton.textContent = "Copied";
+    copyButton.disabled = true;
+    setTimeout(() => {
+      copyButton.textContent = "Copy";
+      copyButton.disabled = false;
+    }, 1400);
     setStatus("License code copied.", false);
     return;
   }
