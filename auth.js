@@ -41,6 +41,7 @@ form.addEventListener("submit", async (event) => {
       method: "POST",
       body: JSON.stringify({
         password: formData.get("password"),
+        verificationCode: formData.get("verificationCode"),
         username: formData.get("username")
       })
     });

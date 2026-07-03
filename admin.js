@@ -12,6 +12,16 @@ const licenseAccount = document.querySelector("#licenseAccount");
 const licenseTotal = document.querySelector("#licenseTotal");
 const logoutButton = document.querySelector("#logoutButton");
 const refreshLicenses = document.querySelector("#refreshLicenses");
+const twofaCard = document.querySelector("#twofaCard");
+const twofaCode = document.querySelector("#twofaCode");
+const twofaCopy = document.querySelector("#twofaCopy");
+const twofaForm = document.querySelector("#twofaForm");
+const twofaQr = document.querySelector("#twofaQr");
+const twofaSecret = document.querySelector("#twofaSecret");
+const twofaSetup = document.querySelector("#twofaSetup");
+const twofaStartButton = document.querySelector("#twofaStartButton");
+const twofaStatus = document.querySelector("#twofaStatus");
+const twofaVerifyButton = document.querySelector("#twofaVerifyButton");
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
@@ -47,6 +57,27 @@ function updateStats(licenses) {
 function setStatus(message, isError = false) {
   licenseStatus.textContent = message;
   licenseStatus.classList.toggle("is-ok", Boolean(message && !isError));
+}
+
+function setTwofaStatus(message, isError = false) {
+  twofaStatus.textContent = message;
+  twofaStatus.classList.toggle("is-ok", Boolean(message && !isError));
+}
+
+function renderTwofa(user) {
+  twofaCard.hidden = false;
+  const enabled = Boolean(user?.totpEnabled);
+  twofaCard.classList.toggle("is-enabled", enabled);
+  twofaCopy.textContent = enabled
+    ? "Google Authenticator is enabled for this admin account."
+    : "Set up Google Authenticator before using admin login in the desktop app.";
+  twofaStartButton.hidden = enabled;
+  twofaVerifyButton.hidden = enabled || twofaSetup.hidden;
+  twofaCode.hidden = enabled;
+  if (enabled) {
+    twofaSetup.hidden = true;
+    setTwofaStatus("Authenticator enabled.", false);
+  }
 }
 
 function renderAccountOptions(users) {
@@ -109,6 +140,7 @@ async function loadAdmin() {
     const data = await requestJson("/api/admin/me");
     adminUsername.textContent = data.user.username;
     adminCopy.textContent = "Create trial and lifetime license codes for ClovaChat.";
+    renderTwofa(data.user);
     await loadAccounts();
     await loadLicenses();
   } catch {
@@ -175,6 +207,43 @@ licenseTable.addEventListener("click", async (event) => {
 });
 
 refreshLicenses.addEventListener("click", loadLicenses);
+
+twofaStartButton.addEventListener("click", async () => {
+  setTwofaStatus("");
+  twofaStartButton.disabled = true;
+  try {
+    const data = await requestJson("/api/admin/2fa/setup", { method: "POST", body: "{}" });
+    twofaQr.src = data.qrCode;
+    twofaSecret.textContent = data.secret;
+    twofaSetup.hidden = false;
+    twofaVerifyButton.hidden = false;
+    twofaCode.hidden = false;
+    twofaCode.focus();
+    setTwofaStatus("Scan the QR code in Google Authenticator, then enter the 6-digit code.", false);
+  } catch (error) {
+    setTwofaStatus(error.message, true);
+  } finally {
+    twofaStartButton.disabled = false;
+  }
+});
+
+twofaForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setTwofaStatus("");
+  twofaVerifyButton.disabled = true;
+  try {
+    const data = await requestJson("/api/admin/2fa/verify", {
+      method: "POST",
+      body: JSON.stringify({ code: twofaCode.value.trim() })
+    });
+    twofaCode.value = "";
+    renderTwofa(data.user);
+  } catch (error) {
+    setTwofaStatus(error.message, true);
+  } finally {
+    twofaVerifyButton.disabled = false;
+  }
+});
 
 logoutButton.addEventListener("click", async () => {
   await requestJson("/api/auth/logout", { method: "POST", body: "{}" });

@@ -55,6 +55,29 @@
         </article>
       </section>
 
+      <section class="twofa-card card" id="twofaCard" hidden>
+        <div class="admin-card-heading">
+          <p class="eyebrow">SECURITY</p>
+          <h2>Admin authenticator</h2>
+          <p id="twofaCopy">Set up Google Authenticator before using admin login in the desktop app.</p>
+        </div>
+        <div class="twofa-setup" id="twofaSetup" hidden>
+          <div class="twofa-qr-wrap">
+            <img id="twofaQr" alt="Google Authenticator setup QR code" />
+          </div>
+          <div>
+            <span class="admin-label">Manual key</span>
+            <code id="twofaSecret" class="twofa-secret"></code>
+          </div>
+        </div>
+        <form class="twofa-actions" id="twofaForm">
+          <input id="twofaCode" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="6-digit code" />
+          <button class="button button-secondary" id="twofaStartButton" type="button">Set Up Authenticator</button>
+          <button class="button button-primary" id="twofaVerifyButton" type="submit" hidden>Verify & Enable</button>
+        </form>
+        <p class="form-status" id="twofaStatus" role="status"></p>
+      </section>
+
       <section class="license-layout">
         <form class="license-form card" id="licenseForm">
           <div class="admin-card-heading">

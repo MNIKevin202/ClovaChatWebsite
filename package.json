@@ -11,6 +11,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "mongodb": "^7.4.0"
+    "mongodb": "^7.4.0",
+    "qrcode": "^1.5.4"
   }
 }

@@ -3,6 +3,7 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 const { MongoClient } = require("mongodb");
+const QRCode = require("qrcode");
 const { URL } = require("url");
 
 const PORT = Number(process.env.PORT || 4173);
@@ -16,9 +17,10 @@ const SESSION_COOKIE = "clovachat_session";
 const SESSION_DAYS = 7;
 const APP_TOKEN_DAYS = 30;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
-const ADMIN_APP_TEST_CODE = process.env.ADMIN_APP_TEST_CODE || "123456";
 const LICENSE_CODE_LENGTH = 62;
 const LICENSE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+const TOTP_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const TOTP_ISSUER = "ClovaChat";
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -262,6 +264,76 @@ function normalizeUsername(username) {
   return String(username || "").trim().toLowerCase();
 }
 
+function generateTotpSecret() {
+  const random = crypto.randomBytes(20);
+  let output = "";
+  let bits = 0;
+  let value = 0;
+  for (const byte of random) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += TOTP_ALPHABET[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) output += TOTP_ALPHABET[(value << (5 - bits)) & 31];
+  return output;
+}
+
+function decodeBase32(secret) {
+  const clean = String(secret || "").replace(/=+$/g, "").replace(/\s+/g, "").toUpperCase();
+  let bits = 0;
+  let value = 0;
+  const bytes = [];
+  for (const char of clean) {
+    const index = TOTP_ALPHABET.indexOf(char);
+    if (index < 0) continue;
+    value = (value << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+function hotp(secret, counter) {
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+  counterBuffer.writeUInt32BE(counter >>> 0, 4);
+  const hmac = crypto.createHmac("sha1", decodeBase32(secret)).update(counterBuffer).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const code = ((hmac[offset] & 0x7f) << 24)
+    | ((hmac[offset + 1] & 0xff) << 16)
+    | ((hmac[offset + 2] & 0xff) << 8)
+    | (hmac[offset + 3] & 0xff);
+  return String(code % 1_000_000).padStart(6, "0");
+}
+
+function verifyTotp(secret, code, now = Date.now()) {
+  const clean = String(code || "").trim();
+  if (!/^\d{6}$/.test(clean) || !secret) return false;
+  const counter = Math.floor(now / 1000 / 30);
+  for (let offset = -1; offset <= 1; offset += 1) {
+    if (hotp(secret, counter + offset) === clean) return true;
+  }
+  return false;
+}
+
+function totpUri(user, secret) {
+  const label = encodeURIComponent(`${TOTP_ISSUER}:${user.username}`);
+  const params = new URLSearchParams({
+    secret,
+    issuer: TOTP_ISSUER,
+    algorithm: "SHA1",
+    digits: "6",
+    period: "30"
+  });
+  return `otpauth://totp/${label}?${params.toString()}`;
+}
+
 function validateCredentials(username, password) {
   if (!/^[a-z0-9_.-]{3,32}$/.test(username)) {
     return "Username must be 3-32 characters and use letters, numbers, dots, dashes, or underscores.";
@@ -300,6 +372,7 @@ function publicUser(user) {
   return {
     id: user.id,
     role: user.role,
+    totpEnabled: Boolean(user.totpSecret),
     username: user.username
   };
 }
@@ -574,9 +647,13 @@ async function handleApi(req, res, pathname) {
     const body = await readBody(req);
     const username = normalizeUsername(body.username);
     const password = String(body.password || "");
+    const verificationCode = String(body.verificationCode || "").trim();
     const user = (await readUsers()).find((candidate) => candidate.username === username);
     if (!user || !verifyPassword(password, user)) {
       return json(res, 401, { error: "Invalid username or password." });
+    }
+    if (user.role === "admin" && user.totpSecret && !verifyTotp(user.totpSecret, verificationCode)) {
+      return json(res, 401, { error: "Enter your 6-digit authenticator code." });
     }
     setSessionCookie(res, createSession(user));
     return json(res, 200, {
@@ -593,7 +670,44 @@ async function handleApi(req, res, pathname) {
   if (pathname === "/api/admin/me" && req.method === "GET") {
     const session = requireAdmin(req, res);
     if (!session) return;
-    return json(res, 200, { user: publicUser(session) });
+    const user = (await readUsers()).find((candidate) => candidate.id === session.sub && candidate.username === session.username);
+    return json(res, 200, { user: publicUser(user || session) });
+  }
+
+  if (pathname === "/api/admin/2fa/setup" && req.method === "POST") {
+    const session = requireAdmin(req, res);
+    if (!session) return;
+    const users = await readUsers();
+    const user = users.find((candidate) => candidate.id === session.sub && candidate.username === session.username);
+    if (!user || user.role !== "admin") return json(res, 404, { error: "Admin account not found." });
+    if (user.totpSecret) return json(res, 409, { error: "Authenticator is already enabled." });
+    user.pendingTotpSecret = generateTotpSecret();
+    await writeUsers(users);
+    const uri = totpUri(user, user.pendingTotpSecret);
+    const qrCode = await QRCode.toDataURL(uri, { margin: 1, width: 220 });
+    return json(res, 200, {
+      qrCode,
+      secret: user.pendingTotpSecret,
+      uri
+    });
+  }
+
+  if (pathname === "/api/admin/2fa/verify" && req.method === "POST") {
+    const session = requireAdmin(req, res);
+    if (!session) return;
+    const body = await readBody(req);
+    const code = String(body.code || "").trim();
+    const users = await readUsers();
+    const user = users.find((candidate) => candidate.id === session.sub && candidate.username === session.username);
+    if (!user || user.role !== "admin") return json(res, 404, { error: "Admin account not found." });
+    if (user.totpSecret) return json(res, 409, { error: "Authenticator is already enabled." });
+    if (!user.pendingTotpSecret) return json(res, 400, { error: "Start authenticator setup first." });
+    if (!verifyTotp(user.pendingTotpSecret, code)) return json(res, 400, { error: "Invalid authenticator code." });
+    user.totpSecret = user.pendingTotpSecret;
+    user.totpEnabledAt = new Date().toISOString();
+    delete user.pendingTotpSecret;
+    await writeUsers(users);
+    return json(res, 200, { user: publicUser(user) });
   }
 
   if (pathname === "/api/admin/licenses" && req.method === "GET") {
@@ -716,8 +830,11 @@ async function handleApi(req, res, pathname) {
     if (!user || !["admin", "customer"].includes(user.role) || !verifyPassword(password, user)) {
       return appJson(res, 401, { error: "Invalid username or password." });
     }
-    if (user.role === "admin" && verificationCode !== ADMIN_APP_TEST_CODE) {
-      return appJson(res, 401, { error: "Enter the 6-digit admin verification code." });
+    if (user.role === "admin" && !user.totpSecret) {
+      return appJson(res, 403, { error: "Set up Google Authenticator on clovachat.com before using admin login in the app." });
+    }
+    if (user.role === "admin" && !verifyTotp(user.totpSecret, verificationCode)) {
+      return appJson(res, 401, { error: "Enter your current 6-digit authenticator code." });
     }
     if (user.role === "admin") {
       return appJson(res, 200, {

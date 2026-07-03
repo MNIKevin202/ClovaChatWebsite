@@ -699,6 +699,69 @@ h3 {
   align-items: start;
 }
 
+.twofa-card {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 20px;
+  border-color: rgba(57, 214, 228, 0.22);
+  background:
+    radial-gradient(circle at top right, rgba(57, 214, 228, 0.12), transparent 34%),
+    var(--panel);
+}
+
+.twofa-card.is-enabled {
+  border-color: rgba(125, 223, 157, 0.34);
+}
+
+.twofa-setup {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.twofa-qr-wrap {
+  padding: 10px;
+  border: 1px solid rgba(178, 194, 210, 0.18);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.twofa-qr-wrap img {
+  display: block;
+  width: 180px;
+  height: 180px;
+}
+
+.twofa-secret {
+  display: block;
+  max-width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(178, 194, 210, 0.18);
+  border-radius: var(--radius);
+  color: var(--cyan);
+  background: rgba(11, 16, 22, 0.84);
+}
+
+.twofa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.twofa-actions input {
+  min-height: 44px;
+  width: min(180px, 100%);
+  padding: 0 12px;
+  border: 1px solid rgba(178, 194, 210, 0.2);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: rgba(11, 16, 22, 0.86);
+  font: inherit;
+}
+
 .license-form,
 .license-list {
   padding: 24px;
@@ -927,6 +990,10 @@ h3 {
 
   .license-form {
     position: static;
+  }
+
+  .twofa-setup {
+    grid-template-columns: 1fr;
   }
 
   .admin-stats {
