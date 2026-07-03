@@ -34,6 +34,8 @@ CapRover can build and serve the Node app on port 80.
 Recommended environment variables:
 
 - `SESSION_SECRET`: long random string used to sign login cookies
+- `mongoDB_URI`: MongoDB connection string for production user and license storage
+- `MONGODB_DB`: optional MongoDB database name, defaults to `clovachat`
 - `DATA_DIR`: persistent data directory for admin users and license codes, defaults to `./data`
 - `COOKIE_SECURE`: set to `true` when serving only over HTTPS
 - `ADMIN_USERNAME`: optional first-admin bootstrap username

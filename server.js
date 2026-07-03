@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
+const { MongoClient } = require("mongodb");
 const { URL } = require("url");
 
 const PORT = Number(process.env.PORT || 4173);
@@ -9,6 +10,8 @@ const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const LICENSES_FILE = path.join(DATA_DIR, "licenses.json");
+const MONGODB_URI = process.env.mongoDB_URI || process.env.MONGODB_URI || process.env.MONGO_URI || "";
+const MONGODB_DB = process.env.MONGODB_DB || "clovachat";
 const SESSION_COOKIE = "clovachat_session";
 const SESSION_DAYS = 7;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
@@ -26,6 +29,8 @@ const MIME_TYPES = {
   ".webp": "image/webp"
 };
 
+let mongoDb = null;
+
 function ensureDataDir() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(USERS_FILE)) {
@@ -36,7 +41,29 @@ function ensureDataDir() {
   }
 }
 
-function readUsers() {
+async function initStorage() {
+  if (!MONGODB_URI) {
+    ensureDataDir();
+    console.log(`Using JSON data storage at ${DATA_DIR}`);
+    return;
+  }
+
+  const client = new MongoClient(MONGODB_URI);
+  await client.connect();
+  mongoDb = client.db(MONGODB_DB);
+  await mongoDb.collection("users").createIndex({ username: 1 }, { unique: true });
+  await mongoDb.collection("users").createIndex(
+    { role: 1 },
+    { unique: true, partialFilterExpression: { role: "admin" } }
+  );
+  await mongoDb.collection("licenses").createIndex({ code: 1 }, { unique: true });
+  console.log(`Using MongoDB data storage: ${MONGODB_DB}`);
+}
+
+async function readUsers() {
+  if (mongoDb) {
+    return mongoDb.collection("users").find({}, { projection: { _id: 0 } }).toArray();
+  }
   ensureDataDir();
   try {
     const data = JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
@@ -46,12 +73,21 @@ function readUsers() {
   }
 }
 
-function writeUsers(users) {
+async function writeUsers(users) {
+  if (mongoDb) {
+    const collection = mongoDb.collection("users");
+    await collection.deleteMany({});
+    if (users.length) await collection.insertMany(users, { ordered: true });
+    return;
+  }
   ensureDataDir();
   fs.writeFileSync(USERS_FILE, JSON.stringify({ users }, null, 2));
 }
 
-function readLicenses() {
+async function readLicenses() {
+  if (mongoDb) {
+    return mongoDb.collection("licenses").find({}, { projection: { _id: 0 } }).toArray();
+  }
   ensureDataDir();
   try {
     const data = JSON.parse(fs.readFileSync(LICENSES_FILE, "utf8"));
@@ -61,7 +97,13 @@ function readLicenses() {
   }
 }
 
-function writeLicenses(licenses) {
+async function writeLicenses(licenses) {
+  if (mongoDb) {
+    const collection = mongoDb.collection("licenses");
+    await collection.deleteMany({});
+    if (licenses.length) await collection.insertMany(licenses, { ordered: true });
+    return;
+  }
   ensureDataDir();
   fs.writeFileSync(LICENSES_FILE, JSON.stringify({ licenses }, null, 2));
 }
@@ -198,8 +240,8 @@ function readBody(req) {
   });
 }
 
-function adminExists() {
-  return readUsers().some((user) => user.role === "admin");
+async function adminExists() {
+  return (await readUsers()).some((user) => user.role === "admin");
 }
 
 function publicUser(user) {
@@ -209,17 +251,17 @@ function publicUser(user) {
   };
 }
 
-function bootstrapAdminFromEnv() {
+async function bootstrapAdminFromEnv() {
   const username = normalizeUsername(process.env.ADMIN_USERNAME);
   const password = String(process.env.ADMIN_PASSWORD || "");
-  if (!username || !password || adminExists()) return;
+  if (!username || !password || await adminExists()) return;
   const validationError = validateCredentials(username, password);
   if (validationError) {
     console.warn(`Admin bootstrap skipped: ${validationError}`);
     return;
   }
   const passwordParts = hashPassword(password);
-  const users = readUsers();
+  const users = await readUsers();
   users.push({
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
@@ -228,7 +270,7 @@ function bootstrapAdminFromEnv() {
     role: "admin",
     username
   });
-  writeUsers(users);
+  await writeUsers(users);
   console.log(`Bootstrapped admin account: ${username}`);
 }
 
@@ -337,11 +379,11 @@ async function handleApi(req, res, pathname) {
   }
 
   if (pathname === "/api/admin/setup-status" && req.method === "GET") {
-    return json(res, 200, { available: !adminExists() });
+    return json(res, 200, { available: !(await adminExists()) });
   }
 
   if (pathname === "/api/admin/setup" && req.method === "POST") {
-    if (adminExists()) {
+    if (await adminExists()) {
       return json(res, 409, { error: "Admin setup is already complete." });
     }
     const body = await readBody(req);
@@ -349,7 +391,7 @@ async function handleApi(req, res, pathname) {
     const password = String(body.password || "");
     const validationError = validateCredentials(username, password);
     if (validationError) return json(res, 400, { error: validationError });
-    const users = readUsers();
+    const users = await readUsers();
     if (users.some((user) => user.username === username)) {
       return json(res, 409, { error: "That username is already taken." });
     }
@@ -364,7 +406,7 @@ async function handleApi(req, res, pathname) {
       username
     };
     users.push(user);
-    writeUsers(users);
+    await writeUsers(users);
     setSessionCookie(res, createSession(user));
     return json(res, 201, {
       redirectTo: destinationForRole(user.role),
@@ -378,7 +420,7 @@ async function handleApi(req, res, pathname) {
     const password = String(body.password || "");
     const validationError = validateCredentials(username, password);
     if (validationError) return json(res, 400, { error: validationError });
-    const users = readUsers();
+    const users = await readUsers();
     if (users.some((user) => user.username === username)) {
       return json(res, 409, { error: "That username is already taken." });
     }
@@ -393,7 +435,7 @@ async function handleApi(req, res, pathname) {
       username
     };
     users.push(user);
-    writeUsers(users);
+    await writeUsers(users);
     setSessionCookie(res, createSession(user));
     return json(res, 201, {
       redirectTo: destinationForRole(user.role),
@@ -405,7 +447,7 @@ async function handleApi(req, res, pathname) {
     const body = await readBody(req);
     const username = normalizeUsername(body.username);
     const password = String(body.password || "");
-    const user = readUsers().find((candidate) => candidate.username === username);
+    const user = (await readUsers()).find((candidate) => candidate.username === username);
     if (!user || !verifyPassword(password, user)) {
       return json(res, 401, { error: "Invalid username or password." });
     }
@@ -429,7 +471,7 @@ async function handleApi(req, res, pathname) {
 
   if (pathname === "/api/admin/licenses" && req.method === "GET") {
     if (!requireAdmin(req, res)) return;
-    const licenses = readLicenses()
+    const licenses = (await readLicenses())
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
       .map(publicLicense);
     return json(res, 200, { licenses });
@@ -442,7 +484,7 @@ async function handleApi(req, res, pathname) {
     const validationError = validateLicenseInput(body);
     if (validationError) return json(res, 400, { error: validationError });
 
-    const licenses = readLicenses();
+    const licenses = await readLicenses();
     const createdAt = new Date();
     const type = String(body.type).trim();
     const durationAmount = type === "trial" ? Number(body.durationAmount) : null;
@@ -466,7 +508,7 @@ async function handleApi(req, res, pathname) {
       type
     };
     licenses.push(license);
-    writeLicenses(licenses);
+    await writeLicenses(licenses);
     return json(res, 201, { license: publicLicense(license) });
   }
 
@@ -474,12 +516,12 @@ async function handleApi(req, res, pathname) {
   if (revokeMatch && req.method === "POST") {
     const session = requireAdmin(req, res);
     if (!session) return;
-    const licenses = readLicenses();
+    const licenses = await readLicenses();
     const license = licenses.find((candidate) => candidate.id === revokeMatch[1]);
     if (!license) return json(res, 404, { error: "License not found." });
     license.revokedAt ||= new Date().toISOString();
     license.revokedBy = session.username;
-    writeLicenses(licenses);
+    await writeLicenses(licenses);
     return json(res, 200, { license: publicLicense(license) });
   }
 
@@ -490,7 +532,7 @@ async function handleApi(req, res, pathname) {
     if (code.length !== LICENSE_CODE_LENGTH) return licenseJson(res, 400, { error: "Invalid license code." });
     if (!validateDeviceId(deviceId)) return licenseJson(res, 400, { error: "Invalid device identifier." });
 
-    const licenses = readLicenses();
+    const licenses = await readLicenses();
     const license = licenses.find((candidate) => candidate.code === code);
     if (!license) return licenseJson(res, 404, { error: "License not found." });
     const status = licenseStatus(license);
@@ -501,7 +543,7 @@ async function handleApi(req, res, pathname) {
     if (!license.deviceId) {
       license.deviceId = deviceId;
       license.activatedAt = new Date().toISOString();
-      writeLicenses(licenses);
+      await writeLicenses(licenses);
     }
     return licenseJson(res, 200, {
       license: {
@@ -564,8 +606,15 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-ensureDataDir();
-bootstrapAdminFromEnv();
-server.listen(PORT, () => {
-  console.log(`ClovaChat website listening on ${PORT}`);
+async function start() {
+  await initStorage();
+  await bootstrapAdminFromEnv();
+  server.listen(PORT, () => {
+    console.log(`ClovaChat website listening on ${PORT}`);
+  });
+}
+
+start().catch((error) => {
+  console.error("Failed to start ClovaChat website:", error);
+  process.exit(1);
 });
