@@ -14,6 +14,7 @@ const MONGODB_URI = process.env.mongoDB_URI || process.env.MONGODB_URI || proces
 const MONGODB_DB = process.env.MONGODB_DB || "clovachat";
 const SESSION_COOKIE = "clovachat_session";
 const SESSION_DAYS = 7;
+const APP_TOKEN_DAYS = 30;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 const LICENSE_CODE_LENGTH = 62;
 const LICENSE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -126,15 +127,31 @@ function licenseCorsHeaders() {
   };
 }
 
-function licenseJson(res, status, body) {
+function appCorsHeaders() {
+  return {
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Origin": "*"
+  };
+}
+
+function corsJson(res, status, body, headers) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
-    ...licenseCorsHeaders(),
+    ...headers,
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(payload),
     "Cache-Control": "no-store"
   });
   res.end(payload);
+}
+
+function licenseJson(res, status, body) {
+  return corsJson(res, status, body, licenseCorsHeaders());
+}
+
+function appJson(res, status, body) {
+  return corsJson(res, status, body, appCorsHeaders());
 }
 
 function parseCookies(req) {
@@ -167,6 +184,18 @@ function createSession(user) {
   return `${payload}.${sign(payload)}`;
 }
 
+function createAppToken(user) {
+  const expiresAt = Date.now() + APP_TOKEN_DAYS * 24 * 60 * 60 * 1000;
+  const payload = Buffer.from(JSON.stringify({
+    app: true,
+    exp: expiresAt,
+    role: user.role,
+    sub: user.id,
+    username: user.username
+  })).toString("base64url");
+  return `${payload}.${sign(payload)}`;
+}
+
 function readSession(req) {
   const token = parseCookies(req)[SESSION_COOKIE];
   if (!token || !token.includes(".")) return null;
@@ -181,6 +210,28 @@ function readSession(req) {
   } catch {
     return null;
   }
+}
+
+function readSignedToken(token) {
+  if (!token || !token.includes(".")) return null;
+  const [payload, signature] = token.split(".");
+  const expectedSignature = sign(payload);
+  if (signature.length !== expectedSignature.length) return null;
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) return null;
+  try {
+    const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (!session.exp || session.exp < Date.now()) return null;
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+function readAppSession(req) {
+  const authorization = String(req.headers.authorization || "");
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  const session = readSignedToken(token);
+  return session?.app ? session : null;
 }
 
 function setSessionCookie(res, token) {
@@ -246,6 +297,16 @@ async function adminExists() {
 
 function publicUser(user) {
   return {
+    id: user.id,
+    role: user.role,
+    username: user.username
+  };
+}
+
+function publicAdminUser(user) {
+  return {
+    createdAt: user.createdAt,
+    id: user.id,
     role: user.role,
     username: user.username
   };
@@ -319,6 +380,8 @@ function licenseStatus(license, now = new Date()) {
 function publicLicense(license) {
   return {
     activatedAt: license.activatedAt || null,
+    assignedUserId: license.assignedUserId || "",
+    assignedUsername: license.assignedUsername || "",
     code: license.code,
     createdAt: license.createdAt,
     deviceId: license.deviceId || "",
@@ -330,6 +393,19 @@ function publicLicense(license) {
     notes: license.notes || "",
     revokedAt: license.revokedAt || null,
     status: licenseStatus(license),
+    type: license.type
+  };
+}
+
+function publicAppLicense(license, accountUsername = "") {
+  return {
+    activatedAt: license.activatedAt || null,
+    accountUsername,
+    deviceId: license.deviceId || "",
+    expiresAt: license.expiresAt || null,
+    source: "account",
+    status: licenseStatus(license),
+    tier: "premium",
     type: license.type
   };
 }
@@ -362,9 +438,46 @@ function validateLicenseInput(body) {
   return "";
 }
 
+async function assignedPremiumForUser(user, deviceId, { bindDevice = false } = {}) {
+  const licenses = await readLicenses();
+  const candidates = licenses
+    .filter((license) => licenseStatus(license) === "active")
+    .filter((license) => license.assignedUserId === user.id || license.assignedUsername === user.username)
+    .sort((a, b) => {
+      if (a.type !== b.type) return a.type === "lifetime" ? -1 : 1;
+      return String(b.createdAt).localeCompare(String(a.createdAt));
+    });
+
+  const locked = candidates.find((license) => license.deviceId && license.deviceId !== deviceId);
+  const license = candidates.find((candidate) => !candidate.deviceId || candidate.deviceId === deviceId);
+  if (!license) {
+    return {
+      license: null,
+      premiumError: locked ? "Premium is already active on another computer." : ""
+    };
+  }
+
+  if (bindDevice && !license.deviceId) {
+    license.deviceId = deviceId;
+    license.activatedAt = new Date().toISOString();
+    await writeLicenses(licenses);
+  }
+
+  return {
+    license: publicAppLicense(license, user.username),
+    premiumError: ""
+  };
+}
+
 async function handleApi(req, res, pathname) {
   if (pathname === "/api/licenses/activate" && req.method === "OPTIONS") {
     res.writeHead(204, licenseCorsHeaders());
+    res.end();
+    return;
+  }
+
+  if (pathname.startsWith("/api/app/") && req.method === "OPTIONS") {
+    res.writeHead(204, appCorsHeaders());
     res.end();
     return;
   }
@@ -477,6 +590,15 @@ async function handleApi(req, res, pathname) {
     return json(res, 200, { licenses });
   }
 
+  if (pathname === "/api/admin/users" && req.method === "GET") {
+    if (!requireAdmin(req, res)) return;
+    const users = (await readUsers())
+      .filter((user) => user.role === "customer")
+      .sort((a, b) => a.username.localeCompare(b.username))
+      .map(publicAdminUser);
+    return json(res, 200, { users });
+  }
+
   if (pathname === "/api/admin/licenses" && req.method === "POST") {
     const session = requireAdmin(req, res);
     if (!session) return;
@@ -485,6 +607,14 @@ async function handleApi(req, res, pathname) {
     if (validationError) return json(res, 400, { error: validationError });
 
     const licenses = await readLicenses();
+    const users = await readUsers();
+    const assignedUsername = normalizeUsername(body.accountUsername);
+    const assignedUser = assignedUsername
+      ? users.find((user) => user.role === "customer" && user.username === assignedUsername)
+      : null;
+    if (assignedUsername && !assignedUser) {
+      return json(res, 400, { error: "Assigned account was not found." });
+    }
     const createdAt = new Date();
     const type = String(body.type).trim();
     const durationAmount = type === "trial" ? Number(body.durationAmount) : null;
@@ -494,6 +624,8 @@ async function handleApi(req, res, pathname) {
       : null;
     const license = {
       activatedAt: null,
+      assignedUserId: assignedUser?.id || "",
+      assignedUsername: assignedUser?.username || "",
       code: uniqueLicenseCode(licenses),
       createdAt: createdAt.toISOString(),
       createdBy: session.username,
@@ -551,10 +683,45 @@ async function handleApi(req, res, pathname) {
         code: license.code,
         deviceId: license.deviceId,
         expiresAt: license.expiresAt || null,
+        source: "code",
         status: licenseStatus(license),
         tier: "premium",
         type: license.type
       }
+    });
+  }
+
+  if (pathname === "/api/app/login" && req.method === "POST") {
+    const body = await readBody(req);
+    const username = normalizeUsername(body.username);
+    const password = String(body.password || "");
+    const deviceId = String(body.deviceId || "").trim();
+    if (!validateDeviceId(deviceId)) return appJson(res, 400, { error: "Invalid device identifier." });
+    const user = (await readUsers()).find((candidate) => candidate.username === username);
+    if (!user || user.role !== "customer" || !verifyPassword(password, user)) {
+      return appJson(res, 401, { error: "Invalid username or password." });
+    }
+    const premium = await assignedPremiumForUser(user, deviceId, { bindDevice: true });
+    return appJson(res, 200, {
+      premium: premium.license,
+      premiumError: premium.premiumError,
+      token: createAppToken(user),
+      user: publicUser(user)
+    });
+  }
+
+  if (pathname === "/api/app/account" && req.method === "GET") {
+    const session = readAppSession(req);
+    if (!session) return appJson(res, 401, { error: "Login required." });
+    const deviceId = String(new URL(req.url, `http://${req.headers.host || "localhost"}`).searchParams.get("deviceId") || "").trim();
+    if (!validateDeviceId(deviceId)) return appJson(res, 400, { error: "Invalid device identifier." });
+    const user = (await readUsers()).find((candidate) => candidate.id === session.sub && candidate.username === session.username);
+    if (!user || user.role !== "customer") return appJson(res, 401, { error: "Login required." });
+    const premium = await assignedPremiumForUser(user, deviceId, { bindDevice: true });
+    return appJson(res, 200, {
+      premium: premium.license,
+      premiumError: premium.premiumError,
+      user: publicUser(user)
     });
   }
 

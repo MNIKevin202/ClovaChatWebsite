@@ -8,6 +8,7 @@ const licenseLifetime = document.querySelector("#licenseLifetime");
 const licenseStatus = document.querySelector("#licenseStatus");
 const licenseTable = document.querySelector("#licenseTable");
 const licenseType = document.querySelector("#licenseType");
+const licenseAccount = document.querySelector("#licenseAccount");
 const licenseTotal = document.querySelector("#licenseTotal");
 const logoutButton = document.querySelector("#logoutButton");
 const refreshLicenses = document.querySelector("#refreshLicenses");
@@ -48,6 +49,17 @@ function setStatus(message, isError = false) {
   licenseStatus.classList.toggle("is-ok", Boolean(message && !isError));
 }
 
+function renderAccountOptions(users) {
+  const options = ['<option value="">No account selected</option>'];
+  options.push(...users.map((user) => `<option value="${user.username}">${user.username}</option>`));
+  licenseAccount.innerHTML = options.join("");
+}
+
+async function loadAccounts() {
+  const data = await requestJson("/api/admin/users");
+  renderAccountOptions(data.users || []);
+}
+
 function renderLicenses(licenses) {
   updateStats(licenses);
   if (!licenses.length) {
@@ -72,6 +84,10 @@ function renderLicenses(licenses) {
         <span class="admin-label">Device</span>
         <strong>${license.deviceId ? "Activated" : "Unused"}</strong>
       </div>
+      <div class="license-meta">
+        <span class="admin-label">Account</span>
+        <strong>${license.assignedUsername || "Unassigned"}</strong>
+      </div>
       <div class="license-actions">
         <button class="button button-secondary" data-copy="${license.code}" type="button">Copy</button>
         <button class="button button-secondary" data-revoke="${license.id}" ${license.revokedAt ? "disabled" : ""} type="button">Revoke</button>
@@ -93,6 +109,7 @@ async function loadAdmin() {
     const data = await requestJson("/api/admin/me");
     adminUsername.textContent = data.user.username;
     adminCopy.textContent = "Create trial and lifetime license codes for ClovaChat.";
+    await loadAccounts();
     await loadLicenses();
   } catch {
     window.location.href = "/login";
@@ -115,6 +132,7 @@ licenseForm.addEventListener("submit", async (event) => {
       durationUnit: formData.get("durationUnit"),
       label: formData.get("label"),
       notes: formData.get("notes"),
+      accountUsername: formData.get("accountUsername"),
       type: formData.get("type")
     };
     const data = await requestJson("/api/admin/licenses", {
