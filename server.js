@@ -386,6 +386,15 @@ function publicAdminUser(user) {
   };
 }
 
+function requireUser(req, res) {
+  const session = readSession(req);
+  if (!session) {
+    json(res, 401, { error: "Login required." });
+    return null;
+  }
+  return session;
+}
+
 async function bootstrapAdminFromEnv() {
   const username = normalizeUsername(process.env.ADMIN_USERNAME);
   const password = String(process.env.ADMIN_PASSWORD || "");
@@ -416,6 +425,10 @@ function requireAdmin(req, res) {
     return null;
   }
   return session;
+}
+
+async function findSessionUser(session) {
+  return (await readUsers()).find((candidate) => candidate.id === session.sub && candidate.username === session.username);
 }
 
 function destinationForRole(role) {
@@ -652,7 +665,13 @@ async function handleApi(req, res, pathname) {
     if (!user || !verifyPassword(password, user)) {
       return json(res, 401, { error: "Invalid username or password." });
     }
-    if (user.role === "admin" && user.totpSecret && !verifyTotp(user.totpSecret, verificationCode)) {
+    if (user.totpSecret && !verificationCode) {
+      return json(res, 202, {
+        requiresTwoFactor: true,
+        user: publicUser(user)
+      });
+    }
+    if (user.totpSecret && !verifyTotp(user.totpSecret, verificationCode)) {
       return json(res, 401, { error: "Enter your 6-digit authenticator code." });
     }
     setSessionCookie(res, createSession(user));
@@ -670,16 +689,24 @@ async function handleApi(req, res, pathname) {
   if (pathname === "/api/admin/me" && req.method === "GET") {
     const session = requireAdmin(req, res);
     if (!session) return;
-    const user = (await readUsers()).find((candidate) => candidate.id === session.sub && candidate.username === session.username);
+    const user = await findSessionUser(session);
     return json(res, 200, { user: publicUser(user || session) });
   }
 
-  if (pathname === "/api/admin/2fa/setup" && req.method === "POST") {
-    const session = requireAdmin(req, res);
+  if (pathname === "/api/account/me" && req.method === "GET") {
+    const session = requireUser(req, res);
+    if (!session) return;
+    const user = await findSessionUser(session);
+    if (!user) return json(res, 401, { error: "Login required." });
+    return json(res, 200, { user: publicUser(user) });
+  }
+
+  if ((pathname === "/api/account/2fa/setup" || pathname === "/api/admin/2fa/setup") && req.method === "POST") {
+    const session = requireUser(req, res);
     if (!session) return;
     const users = await readUsers();
     const user = users.find((candidate) => candidate.id === session.sub && candidate.username === session.username);
-    if (!user || user.role !== "admin") return json(res, 404, { error: "Admin account not found." });
+    if (!user) return json(res, 404, { error: "Account not found." });
     if (user.totpSecret) return json(res, 409, { error: "Authenticator is already enabled." });
     user.pendingTotpSecret = generateTotpSecret();
     await writeUsers(users);
@@ -692,14 +719,14 @@ async function handleApi(req, res, pathname) {
     });
   }
 
-  if (pathname === "/api/admin/2fa/verify" && req.method === "POST") {
-    const session = requireAdmin(req, res);
+  if ((pathname === "/api/account/2fa/verify" || pathname === "/api/admin/2fa/verify") && req.method === "POST") {
+    const session = requireUser(req, res);
     if (!session) return;
     const body = await readBody(req);
     const code = String(body.code || "").trim();
     const users = await readUsers();
     const user = users.find((candidate) => candidate.id === session.sub && candidate.username === session.username);
-    if (!user || user.role !== "admin") return json(res, 404, { error: "Admin account not found." });
+    if (!user) return json(res, 404, { error: "Account not found." });
     if (user.totpSecret) return json(res, 409, { error: "Authenticator is already enabled." });
     if (!user.pendingTotpSecret) return json(res, 400, { error: "Start authenticator setup first." });
     if (!verifyTotp(user.pendingTotpSecret, code)) return json(res, 400, { error: "Invalid authenticator code." });
@@ -833,7 +860,13 @@ async function handleApi(req, res, pathname) {
     if (user.role === "admin" && !user.totpSecret) {
       return appJson(res, 403, { error: "Set up Google Authenticator on clovachat.com before using admin login in the app." });
     }
-    if (user.role === "admin" && !verifyTotp(user.totpSecret, verificationCode)) {
+    if (user.totpSecret && !verificationCode) {
+      return appJson(res, 202, {
+        requiresTwoFactor: true,
+        user: publicUser(user)
+      });
+    }
+    if (user.totpSecret && !verifyTotp(user.totpSecret, verificationCode)) {
       return appJson(res, 401, { error: "Enter your current 6-digit authenticator code." });
     }
     if (user.role === "admin") {

@@ -2,6 +2,9 @@ const form = document.querySelector("#authForm");
 const adminSetupLink = document.querySelector("#adminSetupLink");
 const statusText = document.querySelector("#authStatus");
 const submitButton = document.querySelector("#authSubmit");
+const verificationCode = document.querySelector("#verificationCode");
+const verificationCodeRow = document.querySelector("#verificationCodeRow");
+let twoFactorStep = false;
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
@@ -16,6 +19,14 @@ async function requestJson(url, options = {}) {
 
 function destinationFor(user) {
   return user?.role === "admin" ? "/admin" : "/account";
+}
+
+function resetTwoFactorStep() {
+  twoFactorStep = false;
+  verificationCodeRow.hidden = true;
+  verificationCode.required = false;
+  verificationCode.value = "";
+  submitButton.textContent = "Login";
 }
 
 async function loadAuthState() {
@@ -41,10 +52,19 @@ form.addEventListener("submit", async (event) => {
       method: "POST",
       body: JSON.stringify({
         password: formData.get("password"),
-        verificationCode: formData.get("verificationCode"),
+        verificationCode: twoFactorStep ? formData.get("verificationCode") : "",
         username: formData.get("username")
       })
     });
+    if (data.requiresTwoFactor) {
+      twoFactorStep = true;
+      verificationCodeRow.hidden = false;
+      verificationCode.required = true;
+      verificationCode.focus();
+      submitButton.textContent = "Verify Code";
+      statusText.textContent = "Enter the 6-digit code from your authenticator app.";
+      return;
+    }
     window.location.href = data.redirectTo || destinationFor(data.user);
   } catch (error) {
     statusText.textContent = error.message;
@@ -52,6 +72,9 @@ form.addEventListener("submit", async (event) => {
     submitButton.disabled = false;
   }
 });
+
+form.username?.addEventListener("input", resetTwoFactorStep);
+form.password?.addEventListener("input", resetTwoFactorStep);
 
 loadAuthState().catch((error) => {
   statusText.textContent = error.message;

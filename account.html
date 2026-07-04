@@ -38,6 +38,29 @@
             <strong id="accountRole">Customer</strong>
           </div>
         </div>
+
+        <div class="twofa-card account-twofa-card" id="twofaCard" hidden>
+          <div class="admin-card-heading">
+            <p class="eyebrow">SECURITY</p>
+            <h2>Authenticator</h2>
+            <p id="twofaCopy">Protect your ClovaChat account with Google Authenticator.</p>
+          </div>
+          <div class="twofa-setup" id="twofaSetup" hidden>
+            <div class="twofa-qr-wrap">
+              <img id="twofaQr" alt="Authenticator setup QR code" />
+            </div>
+            <div>
+              <span class="admin-label">Manual key</span>
+              <code id="twofaSecret" class="twofa-secret"></code>
+            </div>
+          </div>
+          <form class="twofa-actions" id="twofaForm">
+            <input id="twofaCode" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="6-digit code" />
+            <button class="button button-secondary" id="twofaStartButton" type="button">Set Up Authenticator</button>
+            <button class="button button-primary" id="twofaVerifyButton" type="submit" hidden>Verify & Enable</button>
+          </form>
+          <p class="form-status" id="twofaStatus" role="status"></p>
+        </div>
       </section>
     </main>
 

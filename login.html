@@ -39,9 +39,9 @@
             Password
             <input id="password" name="password" type="password" autocomplete="current-password" required />
           </label>
-          <label>
+          <label id="verificationCodeRow" hidden>
             Authenticator code
-            <input id="verificationCode" name="verificationCode" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="Admins only" />
+            <input id="verificationCode" name="verificationCode" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="6-digit code" />
           </label>
           <button class="button button-primary" id="authSubmit" type="submit">Login</button>
         </form>
