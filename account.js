@@ -3,6 +3,7 @@ const accountLogoutButton = document.querySelector("#accountLogoutButton");
 const accountRole = document.querySelector("#accountRole");
 const accountUsername = document.querySelector("#accountUsername");
 const twofaCard = document.querySelector("#twofaCard");
+const twofaBadge = document.querySelector("#twofaBadge");
 const twofaCode = document.querySelector("#twofaCode");
 const twofaCopy = document.querySelector("#twofaCopy");
 const twofaForm = document.querySelector("#twofaForm");
@@ -33,6 +34,7 @@ function renderTwofa(user) {
   twofaCard.hidden = false;
   const enabled = Boolean(user?.totpEnabled);
   twofaCard.classList.toggle("is-enabled", enabled);
+  twofaBadge.textContent = enabled ? "Enabled" : "Not enabled";
   twofaCopy.textContent = enabled
     ? "Authenticator is enabled for this account."
     : "Protect your ClovaChat account with Google Authenticator.";
@@ -70,6 +72,7 @@ twofaStartButton.addEventListener("click", async () => {
     twofaQr.src = data.qrCode;
     twofaSecret.textContent = data.secret;
     twofaSetup.hidden = false;
+    twofaStartButton.hidden = true;
     twofaVerifyButton.hidden = false;
     twofaCode.hidden = false;
     twofaCode.focus();

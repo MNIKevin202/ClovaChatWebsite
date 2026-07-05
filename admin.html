@@ -56,18 +56,25 @@
       </section>
 
       <section class="twofa-card card" id="twofaCard" hidden>
-        <div class="admin-card-heading">
-          <p class="eyebrow">SECURITY</p>
-          <h2>Admin authenticator</h2>
-          <p id="twofaCopy">Set up Google Authenticator before using admin login in the desktop app.</p>
+        <div class="twofa-header">
+          <div>
+            <p class="eyebrow">SECURITY</p>
+            <h2>Admin authenticator</h2>
+            <p id="twofaCopy">Set up Google Authenticator before using admin login in the desktop app.</p>
+          </div>
+          <span class="twofa-badge" id="twofaBadge">Not enabled</span>
         </div>
         <div class="twofa-setup" id="twofaSetup" hidden>
-          <div class="twofa-qr-wrap">
-            <img id="twofaQr" alt="Google Authenticator setup QR code" />
+          <div class="twofa-qr-panel">
+            <div class="twofa-qr-wrap">
+              <img id="twofaQr" alt="Google Authenticator setup QR code" />
+            </div>
+            <span>Scan with Google Authenticator</span>
           </div>
-          <div>
+          <div class="twofa-manual-panel">
             <span class="admin-label">Manual key</span>
             <code id="twofaSecret" class="twofa-secret"></code>
+            <p>Use this key only if the QR code cannot be scanned.</p>
           </div>
         </div>
         <form class="twofa-actions" id="twofaForm">

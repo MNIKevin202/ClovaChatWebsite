@@ -510,6 +510,10 @@ h3 {
   box-shadow: var(--shadow);
 }
 
+.account-card {
+  width: min(720px, 100%);
+}
+
 .auth-card h1 {
   margin-bottom: 12px;
   font-size: clamp(2rem, 4vw, 2.75rem);
@@ -705,65 +709,165 @@ h3 {
 
 .twofa-card {
   display: grid;
-  gap: 16px;
+  gap: 18px;
   margin-bottom: 20px;
-  border-color: rgba(57, 214, 228, 0.22);
+  padding: 22px;
+  overflow: hidden;
+  border-color: rgba(178, 194, 210, 0.16);
   background:
-    radial-gradient(circle at top right, rgba(57, 214, 228, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(57, 214, 228, 0.08), rgba(156, 102, 255, 0.07)),
     var(--panel);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.2);
 }
 
 .twofa-card.is-enabled {
   border-color: rgba(125, 223, 157, 0.34);
 }
 
+.twofa-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.account-twofa-card .twofa-header {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.account-twofa-card .twofa-badge {
+  justify-self: start;
+}
+
+.twofa-header h2 {
+  margin: 0;
+  font-size: clamp(1.24rem, 2vw, 1.58rem);
+}
+
+.twofa-header p:not(.eyebrow) {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.twofa-badge {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 199, 89, 0.28);
+  border-radius: 999px;
+  color: #ffd56c;
+  background: rgba(255, 199, 89, 0.1);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.twofa-card.is-enabled .twofa-badge {
+  border-color: rgba(125, 223, 157, 0.32);
+  color: var(--green);
+  background: rgba(125, 223, 157, 0.12);
+}
+
 .twofa-setup {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 16px;
-  align-items: center;
+  grid-template-columns: minmax(172px, 220px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+  padding: 12px;
+  border: 1px solid rgba(178, 194, 210, 0.14);
+  border-radius: var(--radius);
+  background: rgba(11, 16, 22, 0.32);
+}
+
+.twofa-qr-panel,
+.twofa-manual-panel {
+  min-width: 0;
+  border: 1px solid rgba(178, 194, 210, 0.14);
+  border-radius: var(--radius);
+  background: rgba(21, 27, 34, 0.72);
+}
+
+.twofa-qr-panel {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.twofa-qr-panel span,
+.twofa-manual-panel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.twofa-manual-panel {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  padding: 16px;
 }
 
 .twofa-qr-wrap {
-  padding: 10px;
-  border: 1px solid rgba(178, 194, 210, 0.18);
-  border-radius: var(--radius);
+  width: 168px;
+  height: 168px;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border-radius: 14px;
   background: #ffffff;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
 }
 
 .twofa-qr-wrap img {
   display: block;
-  width: 180px;
-  height: 180px;
+  width: 150px;
+  height: 150px;
 }
 
 .twofa-secret {
   display: block;
   max-width: 100%;
-  margin-top: 8px;
-  padding: 12px;
+  padding: 10px 12px;
   overflow-wrap: anywhere;
-  border: 1px solid rgba(178, 194, 210, 0.18);
+  border: 1px solid rgba(57, 214, 228, 0.18);
   border-radius: var(--radius);
   color: var(--cyan);
-  background: rgba(11, 16, 22, 0.84);
+  background: rgba(11, 16, 22, 0.72);
+  font-size: 0.85rem;
+  line-height: 1.45;
 }
 
 .twofa-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) auto;
   gap: 10px;
+  align-items: center;
 }
 
 .twofa-actions input {
   min-height: 44px;
-  width: min(180px, 100%);
+  width: 100%;
   padding: 0 12px;
   border: 1px solid rgba(178, 194, 210, 0.2);
   border-radius: var(--radius);
   color: var(--text);
   background: rgba(11, 16, 22, 0.86);
   font: inherit;
+  text-align: center;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.twofa-card .form-status {
+  min-height: 20px;
+  margin: -4px 0 0;
 }
 
 .license-form,
@@ -997,6 +1101,10 @@ h3 {
   }
 
   .twofa-setup {
+    grid-template-columns: 1fr;
+  }
+
+  .twofa-actions {
     grid-template-columns: 1fr;
   }
 

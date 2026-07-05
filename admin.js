@@ -13,6 +13,7 @@ const licenseTotal = document.querySelector("#licenseTotal");
 const logoutButton = document.querySelector("#logoutButton");
 const refreshLicenses = document.querySelector("#refreshLicenses");
 const twofaCard = document.querySelector("#twofaCard");
+const twofaBadge = document.querySelector("#twofaBadge");
 const twofaCode = document.querySelector("#twofaCode");
 const twofaCopy = document.querySelector("#twofaCopy");
 const twofaForm = document.querySelector("#twofaForm");
@@ -68,6 +69,7 @@ function renderTwofa(user) {
   twofaCard.hidden = false;
   const enabled = Boolean(user?.totpEnabled);
   twofaCard.classList.toggle("is-enabled", enabled);
+  twofaBadge.textContent = enabled ? "Enabled" : "Not enabled";
   twofaCopy.textContent = enabled
     ? "Google Authenticator is enabled for this admin account."
     : "Set up Google Authenticator before using admin login in the desktop app.";
@@ -216,6 +218,7 @@ twofaStartButton.addEventListener("click", async () => {
     twofaQr.src = data.qrCode;
     twofaSecret.textContent = data.secret;
     twofaSetup.hidden = false;
+    twofaStartButton.hidden = true;
     twofaVerifyButton.hidden = false;
     twofaCode.hidden = false;
     twofaCode.focus();
