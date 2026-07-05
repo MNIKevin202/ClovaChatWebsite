@@ -1,10 +1,14 @@
 const form = document.querySelector("#authForm");
 const adminSetupLink = document.querySelector("#adminSetupLink");
+const authSwitch = document.querySelector("#authSwitch");
 const statusText = document.querySelector("#authStatus");
 const submitButton = document.querySelector("#authSubmit");
 const verificationCode = document.querySelector("#verificationCode");
 const verificationCodeRow = document.querySelector("#verificationCodeRow");
+const usernameRow = document.querySelector("#usernameRow");
+const passwordRow = document.querySelector("#passwordRow");
 let twoFactorStep = false;
+let adminSetupAvailable = false;
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
@@ -21,12 +25,20 @@ function destinationFor(user) {
   return user?.role === "admin" ? "/admin" : "/account";
 }
 
+function setTwoFactorStep(enabled) {
+  twoFactorStep = enabled;
+  usernameRow.hidden = enabled;
+  passwordRow.hidden = enabled;
+  verificationCodeRow.hidden = !enabled;
+  verificationCode.required = enabled;
+  if (authSwitch) authSwitch.hidden = enabled;
+  if (adminSetupLink) adminSetupLink.hidden = enabled || !adminSetupAvailable;
+  submitButton.textContent = enabled ? "Verify Code" : "Login";
+}
+
 function resetTwoFactorStep() {
-  twoFactorStep = false;
-  verificationCodeRow.hidden = true;
-  verificationCode.required = false;
+  setTwoFactorStep(false);
   verificationCode.value = "";
-  submitButton.textContent = "Login";
 }
 
 async function loadAuthState() {
@@ -38,7 +50,8 @@ async function loadAuthState() {
 
   if (adminSetupLink) {
     const setupState = await requestJson("/api/admin/setup-status");
-    adminSetupLink.hidden = !setupState.available;
+    adminSetupAvailable = Boolean(setupState.available);
+    adminSetupLink.hidden = !adminSetupAvailable;
   }
 }
 
@@ -57,11 +70,8 @@ form.addEventListener("submit", async (event) => {
       })
     });
     if (data.requiresTwoFactor) {
-      twoFactorStep = true;
-      verificationCodeRow.hidden = false;
-      verificationCode.required = true;
+      setTwoFactorStep(true);
       verificationCode.focus();
-      submitButton.textContent = "Verify Code";
       statusText.textContent = "Enter the 6-digit code from your authenticator app.";
       return;
     }

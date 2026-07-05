@@ -31,11 +31,11 @@
         <p class="auth-copy" id="authCopy">Use your ClovaChat account to manage access. Admin accounts open the license dashboard automatically.</p>
 
         <form id="authForm" class="auth-form">
-          <label>
+          <label id="usernameRow">
             Username
             <input id="username" name="username" autocomplete="username" required />
           </label>
-          <label>
+          <label id="passwordRow">
             Password
             <input id="password" name="password" type="password" autocomplete="current-password" required />
           </label>
@@ -46,7 +46,7 @@
           <button class="button button-primary" id="authSubmit" type="submit">Login</button>
         </form>
 
-        <p class="auth-switch">New here? <a href="/signup">Create a customer account</a>.</p>
+        <p class="auth-switch" id="authSwitch">New here? <a href="/signup">Create a customer account</a>.</p>
         <p class="auth-switch auth-admin-setup" id="adminSetupLink" hidden>First deployment? <a href="/admin/setup">Create the first admin</a>.</p>
         <p class="form-status" id="authStatus" role="status"></p>
       </section>
