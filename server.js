@@ -416,26 +416,34 @@ async function fetchLatestRelease() {
   return release;
 }
 
-async function streamReleaseAsset(res, assetId) {
+async function streamReleaseAsset(req, res, assetId) {
   if (!GITHUB_TOKEN) return json(res, 503, { error: "Downloads are not configured yet." });
+  const upstreamHeaders = {
+    Accept: "application/octet-stream",
+    Authorization: `Bearer ${GITHUB_TOKEN}`,
+    "User-Agent": "chatterbox-website"
+  };
+  // Forward the client's Range header so partial/resumed/parallel-chunk downloads work.
+  // Electron's native download manager issues Range requests; without honoring them the
+  // server would return the full file from byte 0 with a 200 while the client wrote it at
+  // the requested offset, silently corrupting the download (right size, wrong bytes).
+  if (req.headers.range) upstreamHeaders.Range = req.headers.range;
+
   const assetResponse = await fetch(
     `https://api.github.com/repos/${GITHUB_RELEASES_REPO}/releases/assets/${assetId}`,
-    {
-      headers: {
-        Accept: "application/octet-stream",
-        Authorization: `Bearer ${GITHUB_TOKEN}`,
-        "User-Agent": "chatterbox-website"
-      }
-    }
+    { headers: upstreamHeaders }
   );
   if (!assetResponse.ok || !assetResponse.body) {
     return json(res, 502, { error: "Could not fetch the download." });
   }
-  res.writeHead(200, {
+  const passthrough = {
+    "Accept-Ranges": assetResponse.headers.get("accept-ranges") || "bytes",
     "Content-Disposition": assetResponse.headers.get("content-disposition") || "attachment",
     "Content-Length": assetResponse.headers.get("content-length") || undefined,
+    "Content-Range": assetResponse.headers.get("content-range") || undefined,
     "Content-Type": assetResponse.headers.get("content-type") || "application/octet-stream"
-  });
+  };
+  res.writeHead(assetResponse.status, passthrough);
   try {
     await pipeline(Readable.fromWeb(assetResponse.body), res);
   } catch (error) {
@@ -994,7 +1002,7 @@ async function handleApi(req, res, pathname) {
   const downloadMatch = pathname.match(/^\/api\/releases\/download\/(\d+)$/);
   if (downloadMatch && req.method === "GET") {
     if (!requireUser(req, res)) return;
-    return streamReleaseAsset(res, downloadMatch[1]);
+    return streamReleaseAsset(req, res, downloadMatch[1]);
   }
 
   if (pathname === "/api/app/releases/latest" && req.method === "GET") {
@@ -1007,7 +1015,7 @@ async function handleApi(req, res, pathname) {
   const appDownloadMatch = pathname.match(/^\/api\/app\/releases\/download\/(\d+)$/);
   if (appDownloadMatch && req.method === "GET") {
     if (!readAppSession(req)) return appJson(res, 401, { error: "Login required." });
-    return streamReleaseAsset(res, appDownloadMatch[1]);
+    return streamReleaseAsset(req, res, appDownloadMatch[1]);
   }
 
   return json(res, 404, { error: "Not found." });
