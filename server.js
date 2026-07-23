@@ -410,12 +410,35 @@ async function fetchLatestRelease() {
   return release;
 }
 
-function publicRelease(release) {
+async function streamReleaseAsset(res, assetId) {
+  if (!GITHUB_TOKEN) return json(res, 503, { error: "Downloads are not configured yet." });
+  const assetResponse = await fetch(
+    `https://api.github.com/repos/${GITHUB_RELEASES_REPO}/releases/assets/${assetId}`,
+    {
+      headers: {
+        Accept: "application/octet-stream",
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        "User-Agent": "chatterbox-website"
+      }
+    }
+  );
+  if (!assetResponse.ok || !assetResponse.body) {
+    return json(res, 502, { error: "Could not fetch the download." });
+  }
+  res.writeHead(200, {
+    "Content-Disposition": assetResponse.headers.get("content-disposition") || "attachment",
+    "Content-Length": assetResponse.headers.get("content-length") || undefined,
+    "Content-Type": assetResponse.headers.get("content-type") || "application/octet-stream"
+  });
+  Readable.fromWeb(assetResponse.body).pipe(res);
+}
+
+function publicRelease(release, downloadPrefix = "/api/releases/download") {
   const assets = (release.assets || [])
     .filter((asset) => /\.(dmg|exe)$/i.test(asset.name))
     .map((asset) => ({
       id: asset.id,
-      downloadUrl: `/api/releases/download/${asset.id}`,
+      downloadUrl: `${downloadPrefix}/${asset.id}`,
       name: asset.name,
       platform: /\.dmg$/i.test(asset.name) ? "mac" : "windows",
       size: asset.size
@@ -961,27 +984,20 @@ async function handleApi(req, res, pathname) {
   const downloadMatch = pathname.match(/^\/api\/releases\/download\/(\d+)$/);
   if (downloadMatch && req.method === "GET") {
     if (!requireUser(req, res)) return;
-    if (!GITHUB_TOKEN) return json(res, 503, { error: "Downloads are not configured yet." });
-    const assetResponse = await fetch(
-      `https://api.github.com/repos/${GITHUB_RELEASES_REPO}/releases/assets/${downloadMatch[1]}`,
-      {
-        headers: {
-          Accept: "application/octet-stream",
-          Authorization: `Bearer ${GITHUB_TOKEN}`,
-          "User-Agent": "chatterbox-website"
-        }
-      }
-    );
-    if (!assetResponse.ok || !assetResponse.body) {
-      return json(res, 502, { error: "Could not fetch the download." });
-    }
-    res.writeHead(200, {
-      "Content-Disposition": assetResponse.headers.get("content-disposition") || "attachment",
-      "Content-Length": assetResponse.headers.get("content-length") || undefined,
-      "Content-Type": assetResponse.headers.get("content-type") || "application/octet-stream"
-    });
-    Readable.fromWeb(assetResponse.body).pipe(res);
-    return;
+    return streamReleaseAsset(res, downloadMatch[1]);
+  }
+
+  if (pathname === "/api/app/releases/latest" && req.method === "GET") {
+    if (!readAppSession(req)) return appJson(res, 401, { error: "Login required." });
+    const release = await fetchLatestRelease();
+    if (!release) return appJson(res, 503, { error: "Downloads are not configured yet." });
+    return appJson(res, 200, publicRelease(release, "/api/app/releases/download"));
+  }
+
+  const appDownloadMatch = pathname.match(/^\/api\/app\/releases\/download\/(\d+)$/);
+  if (appDownloadMatch && req.method === "GET") {
+    if (!readAppSession(req)) return appJson(res, 401, { error: "Login required." });
+    return streamReleaseAsset(res, appDownloadMatch[1]);
   }
 
   return json(res, 404, { error: "Not found." });
