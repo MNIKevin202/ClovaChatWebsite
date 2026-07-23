@@ -37,7 +37,7 @@ function renderTwofa(user) {
   twofaBadge.textContent = enabled ? "Enabled" : "Not enabled";
   twofaCopy.textContent = enabled
     ? "Authenticator is enabled for this account."
-    : "Protect your ClovaChat account with Google Authenticator.";
+    : "Protect your Chatterbox account with Google Authenticator.";
   twofaStartButton.hidden = enabled;
   twofaVerifyButton.hidden = enabled || twofaSetup.hidden;
   twofaCode.hidden = enabled;

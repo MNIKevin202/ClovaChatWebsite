@@ -141,7 +141,7 @@ async function loadAdmin() {
   try {
     const data = await requestJson("/api/admin/me");
     adminUsername.textContent = data.user.username;
-    adminCopy.textContent = "Create trial and lifetime license codes for ClovaChat.";
+    adminCopy.textContent = "Create trial and lifetime license codes for Chatterbox.";
     renderTwofa(data.user);
     await loadAccounts();
     await loadLicenses();

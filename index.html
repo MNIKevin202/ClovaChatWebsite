@@ -5,23 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="ClovaChat is a desktop Twitch chat app for channels, popups, scripts, timers, and organized stream workflows."
+      content="Chatterbox is a fast, customizable desktop chat client for Twitch and IRC — real badges and emotes, drag-to-resize layout, moderation tools, and themes."
     />
     <meta name="theme-color" content="#11161c" />
-    <meta property="og:title" content="ClovaChat" />
+    <meta property="og:title" content="Chatterbox" />
     <meta
       property="og:description"
-      content="A desktop Twitch chat app for channels, popups, scripts, timers, and organized stream workflows."
+      content="A fast, customizable desktop chat client for Twitch and IRC."
     />
-    <meta property="og:image" content="/assets/clovachat-logo.png" />
-    <title>ClovaChat</title>
-    <link rel="icon" href="/assets/clovachat-icon.png" type="image/png" />
-    <link rel="stylesheet" href="/styles.css?v=20260702-compact2" />
+    <meta property="og:image" content="/assets/chatterbox-icon.png" />
+    <title>Chatterbox</title>
+    <link rel="icon" href="/assets/chatterbox-icon-256.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css?v=20260723-chatterbox" />
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="#top" aria-label="ClovaChat home">
-        <img src="/assets/clovachat-logo.png" alt="ClovaChat" />
+      <a class="brand" href="#top" aria-label="Chatterbox home">
+        <img class="brand-icon" src="/assets/chatterbox-icon-256.png" alt="" />
+        <span class="brand-text">Chatterbox</span>
       </a>
       <div class="header-actions">
         <nav class="site-nav" aria-label="Primary navigation">
@@ -39,11 +40,12 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-inner">
           <div class="hero-copy">
-            <p class="eyebrow">TWITCH CHAT DESKTOP APP</p>
-            <h1 id="hero-title">A cleaner desktop home for Twitch chat.</h1>
+            <p class="eyebrow">TWITCH &amp; IRC CHAT DESKTOP APP</p>
+            <h1 id="hero-title">A faster, more honest home for Twitch chat.</h1>
             <p class="hero-text">
-              Manage channels, popups, scripts, timers, and stream workflows from
-              one focused app built for macOS and Windows.
+              Real badges, real emotes, real moderation tools — a desktop client
+              built for macOS and Windows that gets out of your way and looks
+              exactly the way you want it to.
             </p>
             <div class="hero-actions">
               <a class="button button-primary" href="/login">Account Login</a>
@@ -51,8 +53,51 @@
             </div>
           </div>
 
-          <div class="product-card" aria-label="ClovaChat demo app screenshot">
-            <img src="/assets/demo.png" alt="Demo ClovaChat desktop app interface" />
+          <div class="product-card" aria-label="Chatterbox app preview">
+            <div class="mock-window">
+              <div class="mock-titlebar">
+                <span class="mock-dot mock-dot-red"></span>
+                <span class="mock-dot mock-dot-yellow"></span>
+                <span class="mock-dot mock-dot-green"></span>
+                <span class="mock-titlebar-label">Chatterbox</span>
+              </div>
+              <div class="mock-body">
+                <div class="mock-sidebar">
+                  <div class="mock-sidebar-network">TWITCH: YOU</div>
+                  <div class="mock-sidebar-channel is-active"># main-channel</div>
+                  <div class="mock-sidebar-channel"># raid-partner</div>
+                  <div class="mock-sidebar-channel"># mod-team</div>
+                </div>
+                <div class="mock-chat">
+                  <div class="mock-message">
+                    <span class="mock-badge mock-badge-mod">MOD</span>
+                    <span class="mock-name" style="color:#5c7cfa">nightbot</span>
+                    <span class="mock-text">!uptime</span>
+                  </div>
+                  <div class="mock-message">
+                    <span class="mock-badge mock-badge-vip">VIP</span>
+                    <span class="mock-name" style="color:#d5369b">clova_x</span>
+                    <span class="mock-text">that clip was insane <span class="mock-emote"></span></span>
+                  </div>
+                  <div class="mock-message">
+                    <span class="mock-badge mock-badge-sub">1</span>
+                    <span class="mock-name" style="color:#3a86ff">viewer42</span>
+                    <span class="mock-text">gg <span class="mock-emote mock-emote-alt"></span> <span class="mock-emote"></span></span>
+                  </div>
+                  <div class="mock-message mock-message-cheer">
+                    <span class="mock-cheer"></span>
+                    <span class="mock-name" style="color:#7c4fe0">supporter99</span>
+                    <span class="mock-text">Cheer500 pog</span>
+                  </div>
+                </div>
+                <div class="mock-userlist">
+                  <div class="mock-userlist-heading">USERS · 4</div>
+                  <div class="mock-user"><span class="mock-avatar"></span>nightbot</div>
+                  <div class="mock-user"><span class="mock-avatar mock-avatar-2"></span>clova_x</div>
+                  <div class="mock-user"><span class="mock-avatar mock-avatar-3"></span>viewer42</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -61,7 +106,7 @@
         <div class="section-heading">
           <p class="eyebrow">PREMIUM</p>
           <h2 id="premium-title">Simple pricing.</h2>
-          <p>Start free, upgrade once when you want everything unlocked.</p>
+          <p>Chatterbox is fully-featured for free. Premium just supports the project.</p>
         </div>
 
         <div class="pricing-grid">
@@ -69,17 +114,17 @@
             <div class="plan-top">
               <div>
                 <h3>Free</h3>
-                <p>Good for trying ClovaChat</p>
+                <p>Everything you need to chat</p>
               </div>
               <div class="price">$0</div>
             </div>
             <ul class="check-list">
-              <li>1 server/account</li>
-              <li>Up to 2 autojoin channels</li>
-              <li>2 popups</li>
-              <li>3 scripts</li>
-              <li>1 timer</li>
-              <li>Limited dashboard</li>
+              <li>Unlimited networks and channels</li>
+              <li>Real Twitch badges, emotes, and cheermotes</li>
+              <li>Moderation tools (timeout, ban, chat modes)</li>
+              <li>Custom layout, toolbar, and workspaces</li>
+              <li>Chat history saved per channel</li>
+              <li>Automatic updates</li>
             </ul>
           </article>
 
@@ -92,14 +137,13 @@
               <div class="price">$29.99 <span>plus tax</span></div>
             </div>
             <ul class="check-list">
-              <li>Unlimited servers/accounts</li>
-              <li>Unlimited autojoin channels</li>
-              <li>Chat logging</li>
-              <li>Twitch and 7TV emotes</li>
-              <li>Unlimited popups, scripts, and timers</li>
-              <li>Full dashboard</li>
+              <li>Everything in Free</li>
+              <li>Supports ongoing development</li>
+              <li>Priority feature requests</li>
+              <li>Early access to new releases</li>
+              <li>Supporter badge on your account</li>
             </ul>
-            <a class="button button-primary" href="mailto:support@clovachat.com?subject=ClovaChat%20Lifetime%20Premium">Get Lifetime Premium</a>
+            <a class="button button-primary" href="mailto:support@clovachat.com?subject=Chatterbox%20Lifetime%20Premium">Get Lifetime Premium</a>
           </article>
         </div>
       </section>
@@ -107,39 +151,39 @@
       <section class="section" id="features" aria-labelledby="features-title">
         <div class="section-heading">
           <p class="eyebrow">FEATURES</p>
-          <h2 id="features-title">Built for real Twitch workflows.</h2>
+          <h2 id="features-title">Built for real Twitch chat workflows.</h2>
         </div>
 
         <div class="feature-grid">
           <article class="card feature-card">
             <span class="feature-icon" aria-hidden="true">#</span>
-            <h3>Streams &amp; Chat</h3>
-            <p>Watch stream status, read chat, send messages, and jump between channels quickly.</p>
+            <h3>Multi-network chat</h3>
+            <p>Connect multiple Twitch accounts and IRC networks, and switch between channels with a quick keyboard-driven switcher.</p>
           </article>
           <article class="card feature-card">
-            <span class="feature-icon" aria-hidden="true">&gt;</span>
-            <h3>Popups &amp; Quick Actions</h3>
-            <p>Build one-click actions for stream moments, commands, reminders, and channel routines.</p>
+            <span class="feature-icon" aria-hidden="true">@</span>
+            <h3>Real badges &amp; emotes</h3>
+            <p>Actual Twitch badge icons, channel and global emotes, and animated cheermotes — not text placeholders.</p>
           </article>
           <article class="card feature-card">
-            <span class="feature-icon" aria-hidden="true">/</span>
-            <h3>Scripts &amp; Timers</h3>
-            <p>Automate repeated messages and custom workflows without digging through messy settings.</p>
+            <span class="feature-icon" aria-hidden="true">!</span>
+            <h3>Moderation built in</h3>
+            <p>Timeout, ban, delete, and chat-mode controls that actually work, routed through Twitch's REST API instead of dead IRC commands.</p>
           </article>
           <article class="card feature-card">
-            <span class="feature-icon" aria-hidden="true">+</span>
-            <h3>Emotes</h3>
-            <p>Render Twitch and 7TV emotes directly in chat for a more complete experience.</p>
+            <span class="feature-icon" aria-hidden="true">::</span>
+            <h3>Layout you control</h3>
+            <p>Drag-resize every panel, reorder the toolbar, save named workspaces, and pick between sidebar or tabbed navigation.</p>
           </article>
           <article class="card feature-card">
             <span class="feature-icon" aria-hidden="true">o</span>
-            <h3>Dashboard</h3>
-            <p>See channel status, logs, bot state, joined channels, and activity in one place.</p>
+            <h3>Chat history</h3>
+            <p>Messages are saved per channel so they're there when you reopen Chatterbox — with a toggle if you'd rather they weren't.</p>
           </article>
           <article class="card feature-card">
             <span class="feature-icon" aria-hidden="true">D</span>
             <h3>Desktop-first</h3>
-            <p>Designed for macOS and Windows instead of feeling like a cramped web panel.</p>
+            <p>A real macOS and Windows app with automatic updates, not a browser tab pretending to be one.</p>
           </article>
         </div>
       </section>
@@ -148,8 +192,8 @@
         <div class="download-card">
           <div>
             <p class="eyebrow">DOWNLOAD</p>
-            <h2 id="download-title">Download ClovaChat</h2>
-            <p>Desktop downloads are provided through your ClovaChat account.</p>
+            <h2 id="download-title">Download Chatterbox</h2>
+            <p>Desktop downloads are provided through your Chatterbox account.</p>
           </div>
           <a class="button button-secondary" href="/login">Open Account</a>
         </div>
@@ -162,8 +206,8 @@
         </div>
         <div class="faq-list">
           <details>
-            <summary>Can I use ClovaChat for free?</summary>
-            <p>Yes. The free version lets you connect one server/account, autojoin up to two channels, create two popups, three scripts, and one timer.</p>
+            <summary>Can I use Chatterbox for free?</summary>
+            <p>Yes. The free version is fully featured — unlimited networks, channels, moderation tools, and layout customization.</p>
           </details>
           <details>
             <summary>Is Premium a subscription?</summary>
@@ -171,18 +215,18 @@
           </details>
           <details>
             <summary>What does Premium unlock?</summary>
-            <p>Unlimited servers, accounts, autojoin channels, popups, scripts, timers, chat logging, emotes, and the full dashboard.</p>
+            <p>Premium doesn't gate any features — it supports ongoing development and gets you priority on feature requests and early access to new releases.</p>
           </details>
           <details>
-            <summary>Is ClovaChat for streamers only?</summary>
-            <p>No. It is useful for streamers, moderators, and Twitch chat regulars who want a cleaner desktop workflow.</p>
+            <summary>Is Chatterbox for streamers only?</summary>
+            <p>No. It's useful for streamers, moderators, and Twitch chat regulars who want a cleaner desktop chat experience.</p>
           </details>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span>&copy; <span id="year"></span> ClovaChat</span>
+      <span>&copy; <span id="year"></span> Chatterbox</span>
       <a href="mailto:support@clovachat.com">Support</a>
     </footer>
 

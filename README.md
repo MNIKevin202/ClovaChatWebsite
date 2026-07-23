@@ -1,6 +1,6 @@
-# ClovaChat Website
+# Chatterbox Website
 
-Initial static website for ClovaChat, designed to match the dark neon desktop app.
+Website for Chatterbox, with customer accounts and an admin license dashboard.
 
 ## Local Preview
 

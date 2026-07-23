@@ -20,7 +20,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toSt
 const LICENSE_CODE_LENGTH = 62;
 const LICENSE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 const TOTP_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-const TOTP_ISSUER = "ClovaChat";
+const TOTP_ISSUER = "Chatterbox";
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -858,7 +858,7 @@ async function handleApi(req, res, pathname) {
       return appJson(res, 401, { error: "Invalid username or password." });
     }
     if (user.role === "admin" && !user.totpSecret) {
-      return appJson(res, 403, { error: "Set up Google Authenticator on clovachat.com before using admin login in the app." });
+      return appJson(res, 403, { error: "Set up Google Authenticator on clovachat.com before using admin login in the Chatterbox app." });
     }
     if (user.totpSecret && !verificationCode) {
       return appJson(res, 202, {
@@ -960,11 +960,11 @@ async function start() {
   await initStorage();
   await bootstrapAdminFromEnv();
   server.listen(PORT, () => {
-    console.log(`ClovaChat website listening on ${PORT}`);
+    console.log(`Chatterbox website listening on ${PORT}`);
   });
 }
 
 start().catch((error) => {
-  console.error("Failed to start ClovaChat website:", error);
+  console.error("Failed to start Chatterbox website:", error);
   process.exit(1);
 });
