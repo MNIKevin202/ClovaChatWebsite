@@ -26,7 +26,7 @@ signupForm.addEventListener("submit", async (event) => {
   signupSubmit.disabled = true;
   const formData = new FormData(signupForm);
   try {
-    await requestJson("/api/auth/register", {
+    const data = await requestJson("/api/auth/register", {
       method: "POST",
       body: JSON.stringify({
         password: formData.get("password"),
