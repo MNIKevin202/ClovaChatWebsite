@@ -143,6 +143,7 @@ async function loadAdmin() {
     adminUsername.textContent = data.user.username;
     adminCopy.textContent = "Create trial and lifetime license codes for Chatterbox.";
     renderTwofa(data.user);
+    initDownloadPanel();
     await loadAccounts();
     await loadLicenses();
   } catch {

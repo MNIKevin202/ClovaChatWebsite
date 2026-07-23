@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
+const { Readable } = require("stream");
 const { MongoClient } = require("mongodb");
 const QRCode = require("qrcode");
 const { URL } = require("url");
@@ -21,6 +22,9 @@ const LICENSE_CODE_LENGTH = 62;
 const LICENSE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 const TOTP_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const TOTP_ISSUER = "Chatterbox";
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
+const GITHUB_RELEASES_REPO = process.env.GITHUB_RELEASES_REPO || "MNIKevin202/Chatterbox";
+const RELEASE_CACHE_MS = 5 * 60 * 1000;
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -34,6 +38,7 @@ const MIME_TYPES = {
 };
 
 let mongoDb = null;
+let releaseCache = { data: null, fetchedAt: 0 };
 
 function ensureDataDir() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -383,6 +388,44 @@ function publicAdminUser(user) {
     id: user.id,
     role: user.role,
     username: user.username
+  };
+}
+
+async function fetchLatestRelease() {
+  if (releaseCache.data && Date.now() - releaseCache.fetchedAt < RELEASE_CACHE_MS) {
+    return releaseCache.data;
+  }
+  if (!GITHUB_TOKEN) return null;
+  const response = await fetch(`https://api.github.com/repos/${GITHUB_RELEASES_REPO}/releases/latest`, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      "User-Agent": "chatterbox-website",
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  });
+  if (!response.ok) return null;
+  const release = await response.json();
+  releaseCache = { data: release, fetchedAt: Date.now() };
+  return release;
+}
+
+function publicRelease(release) {
+  const assets = (release.assets || [])
+    .filter((asset) => /\.(dmg|exe)$/i.test(asset.name))
+    .map((asset) => ({
+      id: asset.id,
+      downloadUrl: `/api/releases/download/${asset.id}`,
+      name: asset.name,
+      platform: /\.dmg$/i.test(asset.name) ? "mac" : "windows",
+      size: asset.size
+    }));
+  return {
+    assets,
+    name: release.name || release.tag_name || "",
+    notes: release.body || "",
+    publishedAt: release.published_at || null,
+    version: String(release.tag_name || "").replace(/^v/, "")
   };
 }
 
@@ -906,6 +949,39 @@ async function handleApi(req, res, pathname) {
       premiumError: premium.premiumError,
       user: publicUser(user)
     });
+  }
+
+  if (pathname === "/api/releases/latest" && req.method === "GET") {
+    if (!requireUser(req, res)) return;
+    const release = await fetchLatestRelease();
+    if (!release) return json(res, 503, { error: "Downloads are not configured yet." });
+    return json(res, 200, publicRelease(release));
+  }
+
+  const downloadMatch = pathname.match(/^\/api\/releases\/download\/(\d+)$/);
+  if (downloadMatch && req.method === "GET") {
+    if (!requireUser(req, res)) return;
+    if (!GITHUB_TOKEN) return json(res, 503, { error: "Downloads are not configured yet." });
+    const assetResponse = await fetch(
+      `https://api.github.com/repos/${GITHUB_RELEASES_REPO}/releases/assets/${downloadMatch[1]}`,
+      {
+        headers: {
+          Accept: "application/octet-stream",
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          "User-Agent": "chatterbox-website"
+        }
+      }
+    );
+    if (!assetResponse.ok || !assetResponse.body) {
+      return json(res, 502, { error: "Could not fetch the download." });
+    }
+    res.writeHead(200, {
+      "Content-Disposition": assetResponse.headers.get("content-disposition") || "attachment",
+      "Content-Length": assetResponse.headers.get("content-length") || undefined,
+      "Content-Type": assetResponse.headers.get("content-type") || "application/octet-stream"
+    });
+    Readable.fromWeb(assetResponse.body).pipe(res);
+    return;
   }
 
   return json(res, 404, { error: "Not found." });

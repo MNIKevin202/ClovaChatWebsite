@@ -1077,6 +1077,56 @@ h3 {
   margin: -4px 0 0;
 }
 
+.download-card .twofa-badge {
+  border-color: rgba(57, 214, 228, 0.28);
+  color: var(--cyan);
+  background: rgba(57, 214, 228, 0.1);
+}
+
+.download-assets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.download-asset {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.download-size {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.download-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.download-notes {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(178, 194, 210, 0.14);
+  border-radius: var(--radius);
+  background: rgba(11, 16, 22, 0.32);
+}
+
+.download-notes pre {
+  max-height: 220px;
+  margin: 0;
+  overflow-y: auto;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .license-form,
 .license-list {
   padding: 24px;

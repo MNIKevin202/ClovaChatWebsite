@@ -40,3 +40,7 @@ Recommended environment variables:
 - `COOKIE_SECURE`: set to `true` when serving only over HTTPS
 - `ADMIN_USERNAME`: optional first-admin bootstrap username
 - `ADMIN_PASSWORD`: optional first-admin bootstrap password
+- `GITHUB_TOKEN`: GitHub personal access token with read access to the Chatterbox repo's releases (required for the account/admin download panel, since the app repo is private)
+- `GITHUB_RELEASES_REPO`: optional, defaults to `MNIKevin202/Chatterbox`
+
+Signed-in customers and admins see a Download panel with the latest release version, notes, and installer download buttons. The server proxies GitHub's release assets through `/api/releases/download/:id` using `GITHUB_TOKEN`, since GitHub only serves private-repo release assets to authenticated requests.

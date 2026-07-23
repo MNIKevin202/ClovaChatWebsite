@@ -62,6 +62,7 @@ async function loadAccount() {
   accountCopy.textContent = "Customer license tools will appear here as the purchase flow is added.";
   const account = await requestJson("/api/account/me");
   renderTwofa(account.user);
+  initDownloadPanel();
 }
 
 twofaStartButton.addEventListener("click", async () => {

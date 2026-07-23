@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#11161c" />
     <title>Admin | Chatterbox</title>
     <link rel="icon" href="/assets/chatterbox-icon-256.png" type="image/png" />
-    <link rel="stylesheet" href="/styles.css?v=20260723-chatterbox" />
+    <link rel="stylesheet" href="/styles.css?v=20260723-downloads" />
   </head>
   <body>
     <header class="site-header">
@@ -54,6 +54,22 @@
           <span class="admin-label">Lifetime</span>
           <strong id="licenseLifetime">0</strong>
         </article>
+      </section>
+
+      <section class="twofa-card download-card" id="downloadCard">
+        <div class="twofa-header">
+          <div>
+            <p class="eyebrow">DOWNLOAD</p>
+            <h2>Chatterbox desktop app</h2>
+            <p id="downloadCopy">Checking for the latest release...</p>
+          </div>
+          <span class="twofa-badge" id="downloadVersionBadge">-</span>
+        </div>
+        <div class="download-assets" id="downloadAssets"></div>
+        <div class="download-notes" id="downloadNotes" hidden>
+          <span class="admin-label">What's new</span>
+          <pre id="downloadNotesBody"></pre>
+        </div>
       </section>
 
       <section class="twofa-card card" id="twofaCard" hidden>
@@ -154,6 +170,7 @@
       </section>
     </main>
 
+    <script src="/downloads.js"></script>
     <script src="/admin.js"></script>
   </body>
 </html>
