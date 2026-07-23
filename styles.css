@@ -1127,6 +1127,48 @@ h3 {
   word-break: break-word;
 }
 
+.download-history {
+  display: grid;
+  gap: 12px;
+}
+
+.download-history-toggle {
+  justify-self: start;
+}
+
+.download-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.download-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(178, 194, 210, 0.14);
+  border-radius: var(--radius);
+  background: rgba(11, 16, 22, 0.32);
+}
+
+.download-history-meta {
+  display: grid;
+  gap: 2px;
+}
+
+.download-history-date {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.download-history-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .license-form,
 .license-list {
   padding: 24px;

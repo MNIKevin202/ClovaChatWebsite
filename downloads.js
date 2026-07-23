@@ -5,6 +5,8 @@ const PLATFORM_LABELS = {
 
 const DOWNLOAD_POLL_MS = 60_000;
 let hasLoadedRelease = false;
+let historyLoaded = false;
+let historyOpen = false;
 
 function formatSize(bytes) {
   if (!bytes) return "";
@@ -14,6 +16,83 @@ function formatSize(bytes) {
 function formatDate(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+}
+
+function formatDateTime(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function renderHistoryList(releases) {
+  const list = document.querySelector("#downloadHistoryList");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (!releases.length) {
+    const empty = document.createElement("p");
+    empty.className = "download-empty";
+    empty.textContent = "No previous versions are available.";
+    list.append(empty);
+    return;
+  }
+
+  for (const release of releases) {
+    const row = document.createElement("div");
+    row.className = "download-history-item";
+
+    const meta = document.createElement("div");
+    meta.className = "download-history-meta";
+    const version = document.createElement("strong");
+    version.textContent = release.version ? `v${release.version}` : "Unversioned";
+    const date = document.createElement("span");
+    date.className = "download-history-date";
+    date.textContent = formatDateTime(release.publishedAt);
+    meta.append(version, date);
+    row.append(meta);
+
+    const links = document.createElement("div");
+    links.className = "download-history-links";
+    for (const asset of release.assets) {
+      const link = document.createElement("a");
+      link.className = "button button-secondary";
+      link.href = asset.downloadUrl;
+      link.textContent = PLATFORM_LABELS[asset.platform] || asset.name;
+      links.append(link);
+    }
+    row.append(links);
+
+    list.append(row);
+  }
+}
+
+async function toggleHistory() {
+  const list = document.querySelector("#downloadHistoryList");
+  const toggle = document.querySelector("#downloadHistoryToggle");
+  if (!list || !toggle) return;
+
+  historyOpen = !historyOpen;
+  list.hidden = !historyOpen;
+  toggle.textContent = historyOpen ? "Hide previous versions" : "Download previous version";
+  if (!historyOpen || historyLoaded) return;
+
+  try {
+    const response = await fetch("/api/releases/history", { credentials: "same-origin" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      renderHistoryList([]);
+      return;
+    }
+    historyLoaded = true;
+    renderHistoryList(data.releases || []);
+  } catch {
+    renderHistoryList([]);
+  }
 }
 
 async function refreshDownloadPanel() {
@@ -68,6 +147,9 @@ async function refreshDownloadPanel() {
 
     notesWrap.hidden = !data.notes;
     if (data.notes) notesBody.textContent = data.notes;
+
+    const historyToggle = document.querySelector("#downloadHistoryToggle");
+    if (historyToggle) historyToggle.hidden = false;
   } catch {
     if (!hasLoadedRelease) copy.textContent = "Could not check for the latest release.";
   }
@@ -76,4 +158,7 @@ async function refreshDownloadPanel() {
 function initDownloadPanel() {
   void refreshDownloadPanel();
   setInterval(() => void refreshDownloadPanel(), DOWNLOAD_POLL_MS);
+
+  const historyToggle = document.querySelector("#downloadHistoryToggle");
+  if (historyToggle) historyToggle.addEventListener("click", () => void toggleHistory());
 }

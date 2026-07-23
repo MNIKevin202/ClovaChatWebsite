@@ -40,6 +40,7 @@ const MIME_TYPES = {
 
 let mongoDb = null;
 let releaseCache = { data: null, fetchedAt: 0 };
+let releaseHistoryCache = { data: null, fetchedAt: 0 };
 
 function ensureDataDir() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -414,6 +415,30 @@ async function fetchLatestRelease() {
   // taken mid-upload would hide the second platform's download for the full TTL.
   if (hasBothPlatforms) releaseCache = { data: release, fetchedAt: Date.now() };
   return release;
+}
+
+async function fetchReleaseHistory() {
+  if (releaseHistoryCache.data && Date.now() - releaseHistoryCache.fetchedAt < RELEASE_CACHE_MS) {
+    return releaseHistoryCache.data;
+  }
+  if (!GITHUB_TOKEN) return [];
+  const response = await fetch(`https://api.github.com/repos/${GITHUB_RELEASES_REPO}/releases?per_page=20`, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      "User-Agent": "chatterbox-website",
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  });
+  if (!response.ok) return [];
+  const releases = await response.json();
+  // Drop the newest release (already shown as the featured download) and anything
+  // with no installer assets attached yet.
+  const history = (Array.isArray(releases) ? releases : [])
+    .slice(1)
+    .filter((release) => (release.assets || []).some((asset) => /\.(dmg|exe)$/i.test(asset.name)));
+  releaseHistoryCache = { data: history, fetchedAt: Date.now() };
+  return history;
 }
 
 async function streamReleaseAsset(req, res, assetId) {
@@ -1003,6 +1028,12 @@ async function handleApi(req, res, pathname) {
     const release = await fetchLatestRelease();
     if (!release) return json(res, 503, { error: "Downloads are not configured yet." });
     return json(res, 200, publicRelease(release));
+  }
+
+  if (pathname === "/api/releases/history" && req.method === "GET") {
+    if (!requireUser(req, res)) return;
+    const history = await fetchReleaseHistory();
+    return json(res, 200, { releases: history.map((release) => publicRelease(release)) });
   }
 
   const downloadMatch = pathname.match(/^\/api\/releases\/download\/(\d+)$/);
