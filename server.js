@@ -407,7 +407,12 @@ async function fetchLatestRelease() {
   });
   if (!response.ok) return null;
   const release = await response.json();
-  releaseCache = { data: release, fetchedAt: Date.now() };
+  const assetNames = (release.assets || []).map((asset) => asset.name);
+  const hasBothPlatforms = assetNames.some((name) => /\.dmg$/i.test(name)) && assetNames.some((name) => /\.exe$/i.test(name));
+  // Only cache once both platform installers are attached — a multi-platform CI
+  // release publishes its assets a minute or two apart, and caching a snapshot
+  // taken mid-upload would hide the second platform's download for the full TTL.
+  if (hasBothPlatforms) releaseCache = { data: release, fetchedAt: Date.now() };
   return release;
 }
 
