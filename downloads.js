@@ -3,6 +3,9 @@ const PLATFORM_LABELS = {
   windows: "Windows (.exe)"
 };
 
+const DOWNLOAD_POLL_MS = 60_000;
+let hasLoadedRelease = false;
+
 function formatSize(bytes) {
   if (!bytes) return "";
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -13,7 +16,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
 }
 
-async function initDownloadPanel() {
+async function refreshDownloadPanel() {
   const card = document.querySelector("#downloadCard");
   const badge = document.querySelector("#downloadVersionBadge");
   const copy = document.querySelector("#downloadCopy");
@@ -26,10 +29,11 @@ async function initDownloadPanel() {
     const response = await fetch("/api/releases/latest", { credentials: "same-origin" });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      copy.textContent = data.error || "Downloads are not available right now.";
+      if (!hasLoadedRelease) copy.textContent = data.error || "Downloads are not available right now.";
       return;
     }
 
+    hasLoadedRelease = true;
     badge.textContent = data.version ? `v${data.version}` : "Unreleased";
     const published = formatDate(data.publishedAt);
     copy.textContent = published
@@ -62,11 +66,14 @@ async function initDownloadPanel() {
       }
     }
 
-    if (data.notes) {
-      notesBody.textContent = data.notes;
-      notesWrap.hidden = false;
-    }
+    notesWrap.hidden = !data.notes;
+    if (data.notes) notesBody.textContent = data.notes;
   } catch {
-    copy.textContent = "Could not check for the latest release.";
+    if (!hasLoadedRelease) copy.textContent = "Could not check for the latest release.";
   }
+}
+
+function initDownloadPanel() {
+  void refreshDownloadPanel();
+  setInterval(() => void refreshDownloadPanel(), DOWNLOAD_POLL_MS);
 }
