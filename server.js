@@ -3,6 +3,7 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 const { Readable } = require("stream");
+const { pipeline } = require("stream/promises");
 const { MongoClient } = require("mongodb");
 const QRCode = require("qrcode");
 const { URL } = require("url");
@@ -430,7 +431,11 @@ async function streamReleaseAsset(res, assetId) {
     "Content-Length": assetResponse.headers.get("content-length") || undefined,
     "Content-Type": assetResponse.headers.get("content-type") || "application/octet-stream"
   });
-  Readable.fromWeb(assetResponse.body).pipe(res);
+  try {
+    await pipeline(Readable.fromWeb(assetResponse.body), res);
+  } catch (error) {
+    if (!res.destroyed) res.destroy(error instanceof Error ? error : new Error("Download interrupted."));
+  }
 }
 
 function publicRelease(release, downloadPrefix = "/api/releases/download") {
