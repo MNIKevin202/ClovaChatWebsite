@@ -436,13 +436,19 @@ async function streamReleaseAsset(req, res, assetId) {
   if (!assetResponse.ok || !assetResponse.body) {
     return json(res, 502, { error: "Could not fetch the download." });
   }
+  // Build headers, omitting any the upstream response didn't include. Node's writeHead
+  // rejects a header whose value is undefined, and Content-Range/Content-Length are
+  // absent on a plain 200 (non-range) response — passing them through unconditionally
+  // crashed every non-ranged download with "Invalid value undefined for header".
   const passthrough = {
     "Accept-Ranges": assetResponse.headers.get("accept-ranges") || "bytes",
     "Content-Disposition": assetResponse.headers.get("content-disposition") || "attachment",
-    "Content-Length": assetResponse.headers.get("content-length") || undefined,
-    "Content-Range": assetResponse.headers.get("content-range") || undefined,
     "Content-Type": assetResponse.headers.get("content-type") || "application/octet-stream"
   };
+  const contentLength = assetResponse.headers.get("content-length");
+  if (contentLength) passthrough["Content-Length"] = contentLength;
+  const contentRange = assetResponse.headers.get("content-range");
+  if (contentRange) passthrough["Content-Range"] = contentRange;
   res.writeHead(assetResponse.status, passthrough);
   try {
     await pipeline(Readable.fromWeb(assetResponse.body), res);
