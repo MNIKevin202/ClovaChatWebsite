@@ -13,6 +13,7 @@ const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const LICENSES_FILE = path.join(DATA_DIR, "licenses.json");
+const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const MONGODB_URI = process.env.mongoDB_URI || process.env.MONGODB_URI || process.env.MONGO_URI || "";
 const MONGODB_DB = process.env.MONGODB_DB || "clovachat";
 const SESSION_COOKIE = "clovachat_session";
@@ -117,6 +118,32 @@ async function writeLicenses(licenses) {
   }
   ensureDataDir();
   fs.writeFileSync(LICENSES_FILE, JSON.stringify({ licenses }, null, 2));
+}
+
+async function readAppSettings() {
+  if (mongoDb) {
+    const doc = await mongoDb.collection("settings").findOne({ _id: "app" });
+    return { requiredVersion: doc?.requiredVersion || "" };
+  }
+  ensureDataDir();
+  try {
+    const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
+    return { requiredVersion: data.requiredVersion || "" };
+  } catch {
+    return { requiredVersion: "" };
+  }
+}
+
+async function writeAppSettings(patch) {
+  const current = await readAppSettings();
+  const next = { ...current, ...patch };
+  if (mongoDb) {
+    await mongoDb.collection("settings").updateOne({ _id: "app" }, { $set: next }, { upsert: true });
+  } else {
+    ensureDataDir();
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(next, null, 2));
+  }
+  return next;
 }
 
 function json(res, status, body) {
@@ -852,6 +879,23 @@ async function handleApi(req, res, pathname) {
     return json(res, 200, { user: publicUser(user) });
   }
 
+  if (pathname === "/api/admin/required-version" && req.method === "GET") {
+    if (!requireAdmin(req, res)) return;
+    const settings = await readAppSettings();
+    return json(res, 200, { requiredVersion: settings.requiredVersion });
+  }
+
+  if (pathname === "/api/admin/required-version" && req.method === "POST") {
+    if (!requireAdmin(req, res)) return;
+    const body = await readBody(req);
+    const version = String(body.version || "").trim().replace(/^v/, "");
+    if (version && !/^\d+\.\d+\.\d+$/.test(version)) {
+      return json(res, 400, { error: "Version must look like 1.2.3, or blank to clear it." });
+    }
+    const settings = await writeAppSettings({ requiredVersion: version });
+    return json(res, 200, { requiredVersion: settings.requiredVersion });
+  }
+
   if (pathname === "/api/admin/licenses" && req.method === "GET") {
     if (!requireAdmin(req, res)) return;
     const licenses = (await readLicenses())
@@ -1046,7 +1090,8 @@ async function handleApi(req, res, pathname) {
     if (!readAppSession(req)) return appJson(res, 401, { error: "Login required." });
     const release = await fetchLatestRelease();
     if (!release) return appJson(res, 503, { error: "Downloads are not configured yet." });
-    return appJson(res, 200, publicRelease(release, "/api/app/releases/download"));
+    const settings = await readAppSettings();
+    return appJson(res, 200, { ...publicRelease(release, "/api/app/releases/download"), requiredVersion: settings.requiredVersion });
   }
 
   const appDownloadMatch = pathname.match(/^\/api\/app\/releases\/download\/(\d+)$/);

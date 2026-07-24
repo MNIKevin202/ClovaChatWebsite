@@ -23,6 +23,13 @@ const twofaSetup = document.querySelector("#twofaSetup");
 const twofaStartButton = document.querySelector("#twofaStartButton");
 const twofaStatus = document.querySelector("#twofaStatus");
 const twofaVerifyButton = document.querySelector("#twofaVerifyButton");
+const requiredUpdateCard = document.querySelector("#requiredUpdateCard");
+const requiredUpdateBadge = document.querySelector("#requiredUpdateBadge");
+const requiredUpdateCopy = document.querySelector("#requiredUpdateCopy");
+const requiredUpdateForm = document.querySelector("#requiredUpdateForm");
+const requiredUpdateVersion = document.querySelector("#requiredUpdateVersion");
+const requiredUpdateClearButton = document.querySelector("#requiredUpdateClearButton");
+const requiredUpdateStatus = document.querySelector("#requiredUpdateStatus");
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
@@ -137,6 +144,93 @@ async function loadLicenses() {
   renderLicenses(data.licenses);
 }
 
+function setRequiredUpdateStatus(message, isError = false) {
+  requiredUpdateStatus.textContent = message;
+  requiredUpdateStatus.classList.toggle("is-ok", Boolean(message && !isError));
+}
+
+function renderRequiredUpdate(version) {
+  const has = Boolean(version);
+  requiredUpdateBadge.textContent = has ? `v${version}+` : "Not set";
+  requiredUpdateCard.classList.toggle("is-enabled", has);
+  requiredUpdateCopy.textContent = has
+    ? `Chatterbox app users below v${version} are being blocked with a mandatory update prompt.`
+    : "No version is currently required. Everyone can stay on their current build.";
+}
+
+async function loadRequiredUpdateVersions(selected) {
+  try {
+    const [latest, history] = await Promise.all([
+      requestJson("/api/releases/latest").catch(() => null),
+      requestJson("/api/releases/history").catch(() => ({ releases: [] }))
+    ]);
+    const versions = [];
+    if (latest?.version) versions.push(latest.version);
+    for (const release of history.releases || []) {
+      if (release.version && !versions.includes(release.version)) versions.push(release.version);
+    }
+    if (selected && !versions.includes(selected)) versions.push(selected);
+    requiredUpdateVersion.innerHTML = ['<option value="">No version selected</option>']
+      .concat(versions.map((version) => `<option value="${version}">v${version}</option>`))
+      .join("");
+    if (selected) requiredUpdateVersion.value = selected;
+  } catch {
+    // Best-effort — the dropdown just stays empty if the release list can't be fetched.
+  }
+}
+
+async function loadRequiredUpdate() {
+  try {
+    const data = await requestJson("/api/admin/required-version");
+    renderRequiredUpdate(data.requiredVersion);
+    await loadRequiredUpdateVersions(data.requiredVersion);
+  } catch (error) {
+    setRequiredUpdateStatus(error.message, true);
+  }
+}
+
+requiredUpdateForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setRequiredUpdateStatus("");
+  const version = requiredUpdateVersion.value;
+  if (!version) {
+    setRequiredUpdateStatus("Pick a version first.", true);
+    return;
+  }
+  const submit = requiredUpdateForm.querySelector("button[type='submit']");
+  submit.disabled = true;
+  try {
+    const data = await requestJson("/api/admin/required-version", {
+      method: "POST",
+      body: JSON.stringify({ version })
+    });
+    renderRequiredUpdate(data.requiredVersion);
+    setRequiredUpdateStatus(`Version ${data.requiredVersion} is now required.`, false);
+  } catch (error) {
+    setRequiredUpdateStatus(error.message, true);
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+requiredUpdateClearButton.addEventListener("click", async () => {
+  setRequiredUpdateStatus("");
+  requiredUpdateClearButton.disabled = true;
+  try {
+    const data = await requestJson("/api/admin/required-version", {
+      method: "POST",
+      body: JSON.stringify({ version: "" })
+    });
+    renderRequiredUpdate(data.requiredVersion);
+    requiredUpdateVersion.value = "";
+    setRequiredUpdateStatus("Update requirement cleared.", false);
+  } catch (error) {
+    setRequiredUpdateStatus(error.message, true);
+  } finally {
+    requiredUpdateClearButton.disabled = false;
+  }
+});
+
 async function loadAdmin() {
   try {
     const data = await requestJson("/api/admin/me");
@@ -146,6 +240,7 @@ async function loadAdmin() {
     initDownloadPanel();
     await loadAccounts();
     await loadLicenses();
+    await loadRequiredUpdate();
   } catch {
     window.location.href = "/login";
   }

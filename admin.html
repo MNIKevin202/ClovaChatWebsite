@@ -78,6 +78,26 @@
         </div>
       </section>
 
+      <section class="twofa-card card" id="requiredUpdateCard">
+        <div class="twofa-header">
+          <div>
+            <p class="eyebrow">FORCE UPDATE</p>
+            <h2>Require update</h2>
+            <p id="requiredUpdateCopy">No version is currently required. Everyone can stay on their current build.</p>
+          </div>
+          <span class="twofa-badge" id="requiredUpdateBadge">Not set</span>
+        </div>
+        <form class="twofa-actions" id="requiredUpdateForm">
+          <select id="requiredUpdateVersion">
+            <option value="">No version selected</option>
+          </select>
+          <button class="button button-primary" id="requiredUpdateSetButton" type="submit">Require this version</button>
+          <button class="button button-secondary" id="requiredUpdateClearButton" type="button">Clear requirement</button>
+        </form>
+        <p class="form-status" id="requiredUpdateStatus" role="status"></p>
+        <p class="field-note">When set, anyone signed into the Chatterbox app on an older version is blocked with a mandatory update prompt until they install this version or newer.</p>
+      </section>
+
       <section class="twofa-card card" id="twofaCard" hidden>
         <div class="twofa-header">
           <div>
