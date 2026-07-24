@@ -1247,9 +1247,28 @@ h3 {
   border-bottom: 1px solid rgba(178, 194, 210, 0.12);
 }
 
-.license-table {
+.license-table,
+.version-table {
   display: grid;
   gap: 12px;
+}
+
+.required-update-form {
+  display: flex !important;
+  flex-wrap: wrap;
+}
+
+.required-update-form select,
+.required-update-form input {
+  min-height: 44px;
+  min-width: 160px;
+  flex: 1 1 160px;
+  padding: 0 12px;
+  border: 1px solid rgba(178, 194, 210, 0.2);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: rgba(11, 16, 22, 0.86);
+  font: inherit;
 }
 
 .license-row {

@@ -30,6 +30,10 @@ const requiredUpdateForm = document.querySelector("#requiredUpdateForm");
 const requiredUpdateVersion = document.querySelector("#requiredUpdateVersion");
 const requiredUpdateClearButton = document.querySelector("#requiredUpdateClearButton");
 const requiredUpdateStatus = document.querySelector("#requiredUpdateStatus");
+const requiredUpdateReasonPreset = document.querySelector("#requiredUpdateReasonPreset");
+const requiredUpdateReason = document.querySelector("#requiredUpdateReason");
+const versionTable = document.querySelector("#versionTable");
+const refreshVersions = document.querySelector("#refreshVersions");
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
@@ -149,12 +153,12 @@ function setRequiredUpdateStatus(message, isError = false) {
   requiredUpdateStatus.classList.toggle("is-ok", Boolean(message && !isError));
 }
 
-function renderRequiredUpdate(version) {
+function renderRequiredUpdate(version, reason) {
   const has = Boolean(version);
   requiredUpdateBadge.textContent = has ? `v${version}+` : "Not set";
   requiredUpdateCard.classList.toggle("is-enabled", has);
   requiredUpdateCopy.textContent = has
-    ? `Chatterbox app users below v${version} are being blocked with a mandatory update prompt.`
+    ? `Chatterbox app users below v${version} are being blocked with a mandatory update prompt.${reason ? ` Reason: "${reason}"` : ""}`
     : "No version is currently required. Everyone can stay on their current build.";
 }
 
@@ -182,12 +186,24 @@ async function loadRequiredUpdateVersions(selected) {
 async function loadRequiredUpdate() {
   try {
     const data = await requestJson("/api/admin/required-version");
-    renderRequiredUpdate(data.requiredVersion);
+    renderRequiredUpdate(data.requiredVersion, data.requiredReason);
+    requiredUpdateReason.value = data.requiredReason || "";
     await loadRequiredUpdateVersions(data.requiredVersion);
   } catch (error) {
     setRequiredUpdateStatus(error.message, true);
   }
 }
+
+requiredUpdateReasonPreset.addEventListener("change", () => {
+  const option = requiredUpdateReasonPreset.selectedOptions[0];
+  if (option?.dataset.custom !== undefined) {
+    requiredUpdateReason.value = "";
+    requiredUpdateReason.focus();
+  } else if (requiredUpdateReasonPreset.value) {
+    requiredUpdateReason.value = requiredUpdateReasonPreset.value;
+  }
+  requiredUpdateReasonPreset.value = "";
+});
 
 requiredUpdateForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -202,9 +218,9 @@ requiredUpdateForm.addEventListener("submit", async (event) => {
   try {
     const data = await requestJson("/api/admin/required-version", {
       method: "POST",
-      body: JSON.stringify({ version })
+      body: JSON.stringify({ version, reason: requiredUpdateReason.value.trim() })
     });
-    renderRequiredUpdate(data.requiredVersion);
+    renderRequiredUpdate(data.requiredVersion, data.requiredReason);
     setRequiredUpdateStatus(`Version ${data.requiredVersion} is now required.`, false);
   } catch (error) {
     setRequiredUpdateStatus(error.message, true);
@@ -221,8 +237,9 @@ requiredUpdateClearButton.addEventListener("click", async () => {
       method: "POST",
       body: JSON.stringify({ version: "" })
     });
-    renderRequiredUpdate(data.requiredVersion);
+    renderRequiredUpdate(data.requiredVersion, data.requiredReason);
     requiredUpdateVersion.value = "";
+    requiredUpdateReason.value = "";
     setRequiredUpdateStatus("Update requirement cleared.", false);
   } catch (error) {
     setRequiredUpdateStatus(error.message, true);
@@ -230,6 +247,57 @@ requiredUpdateClearButton.addEventListener("click", async () => {
     requiredUpdateClearButton.disabled = false;
   }
 });
+
+function renderVersions(versions) {
+  if (!versions.length) {
+    versionTable.innerHTML = '<p class="empty-state">No managed versions found yet (0.2.22+).</p>';
+    return;
+  }
+  versionTable.innerHTML = versions.map((entry) => `
+    <article class="license-row ${entry.disabled ? "status-border-expired" : "status-border-active"}" data-version="${entry.version}">
+      <div class="license-code-block">
+        <div class="license-card-top">
+          <span class="license-type">v${entry.version}</span>
+          <strong class="status-pill ${entry.disabled ? "status-expired" : "status-active"}">${entry.disabled ? "Disabled" : "Enabled"}</strong>
+        </div>
+      </div>
+      <div class="license-actions">
+        <button class="button ${entry.disabled ? "button-primary" : "button-secondary"}" data-toggle-version="${entry.version}" data-disable="${!entry.disabled}" type="button">
+          ${entry.disabled ? "Enable" : "Disable"}
+        </button>
+      </div>
+    </article>
+  `).join("");
+}
+
+async function loadVersions() {
+  try {
+    const data = await requestJson("/api/admin/versions");
+    renderVersions(data.versions || []);
+  } catch (error) {
+    versionTable.innerHTML = `<p class="empty-state">${error.message}</p>`;
+  }
+}
+
+versionTable.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-toggle-version]");
+  if (!button) return;
+  const version = button.dataset.toggleVersion;
+  const disable = button.dataset.disable === "true";
+  button.disabled = true;
+  try {
+    await requestJson(`/api/admin/versions/${encodeURIComponent(version)}/${disable ? "disable" : "enable"}`, {
+      method: "POST",
+      body: "{}"
+    });
+    await loadVersions();
+  } catch (error) {
+    button.disabled = false;
+    setRequiredUpdateStatus(error.message, true);
+  }
+});
+
+refreshVersions.addEventListener("click", loadVersions);
 
 async function loadAdmin() {
   try {
@@ -241,6 +309,7 @@ async function loadAdmin() {
     await loadAccounts();
     await loadLicenses();
     await loadRequiredUpdate();
+    await loadVersions();
   } catch {
     window.location.href = "/login";
   }

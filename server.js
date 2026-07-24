@@ -27,6 +27,9 @@ const TOTP_ISSUER = "Chatterbox";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
 const GITHUB_RELEASES_REPO = process.env.GITHUB_RELEASES_REPO || "MNIKevin202/Chatterbox";
 const RELEASE_CACHE_MS = 5 * 60 * 1000;
+// Version management (disabling individual releases) shipped in 0.2.22 — older versions have
+// no code path that would even understand a "disabled" response, so there's nothing to manage.
+const MIN_MANAGED_VERSION = "0.2.22";
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -120,17 +123,24 @@ async function writeLicenses(licenses) {
   fs.writeFileSync(LICENSES_FILE, JSON.stringify({ licenses }, null, 2));
 }
 
+function normalizeAppSettings(data) {
+  return {
+    requiredVersion: data?.requiredVersion || "",
+    requiredReason: data?.requiredReason || "",
+    disabledVersions: Array.isArray(data?.disabledVersions) ? data.disabledVersions : []
+  };
+}
+
 async function readAppSettings() {
   if (mongoDb) {
     const doc = await mongoDb.collection("settings").findOne({ _id: "app" });
-    return { requiredVersion: doc?.requiredVersion || "" };
+    return normalizeAppSettings(doc);
   }
   ensureDataDir();
   try {
-    const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
-    return { requiredVersion: data.requiredVersion || "" };
+    return normalizeAppSettings(JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8")));
   } catch {
-    return { requiredVersion: "" };
+    return normalizeAppSettings(null);
   }
 }
 
@@ -528,6 +538,50 @@ function publicRelease(release, downloadPrefix = "/api/releases/download") {
   };
 }
 
+function compareVersions(a, b) {
+  const partsA = String(a || "0").split(".").map((part) => Number(part) || 0);
+  const partsB = String(b || "0").split(".").map((part) => Number(part) || 0);
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i += 1) {
+    const diff = (partsA[i] || 0) - (partsB[i] || 0);
+    if (diff !== 0) return diff < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
+async function findReleaseVersionForAsset(assetId) {
+  const latest = await fetchLatestRelease();
+  if (latest && (latest.assets || []).some((asset) => String(asset.id) === String(assetId))) {
+    return String(latest.tag_name || "").replace(/^v/, "");
+  }
+  const history = await fetchReleaseHistory();
+  for (const release of history) {
+    if ((release.assets || []).some((asset) => String(asset.id) === String(assetId))) {
+      return String(release.tag_name || "").replace(/^v/, "");
+    }
+  }
+  return null;
+}
+
+/** Returns the version string if the asset belongs to a disabled release, otherwise null. */
+async function disabledVersionForAsset(assetId) {
+  const version = await findReleaseVersionForAsset(assetId);
+  if (!version) return null;
+  const settings = await readAppSettings();
+  return settings.disabledVersions.includes(version) ? version : null;
+}
+
+async function listManagedVersions() {
+  const [latest, history] = await Promise.all([fetchLatestRelease(), fetchReleaseHistory()]);
+  const all = [latest, ...history].filter(Boolean);
+  const versions = [];
+  for (const release of all) {
+    const version = String(release.tag_name || "").replace(/^v/, "");
+    if (!version || compareVersions(version, MIN_MANAGED_VERSION) < 0) continue;
+    versions.push({ version, publishedAt: release.published_at || null });
+  }
+  return versions.sort((a, b) => compareVersions(b.version, a.version));
+}
+
 function requireUser(req, res) {
   const session = readSession(req);
   if (!session) {
@@ -882,18 +936,43 @@ async function handleApi(req, res, pathname) {
   if (pathname === "/api/admin/required-version" && req.method === "GET") {
     if (!requireAdmin(req, res)) return;
     const settings = await readAppSettings();
-    return json(res, 200, { requiredVersion: settings.requiredVersion });
+    return json(res, 200, { requiredVersion: settings.requiredVersion, requiredReason: settings.requiredReason });
   }
 
   if (pathname === "/api/admin/required-version" && req.method === "POST") {
     if (!requireAdmin(req, res)) return;
     const body = await readBody(req);
     const version = String(body.version || "").trim().replace(/^v/, "");
+    const reason = String(body.reason || "").trim().slice(0, 300);
     if (version && !/^\d+\.\d+\.\d+$/.test(version)) {
       return json(res, 400, { error: "Version must look like 1.2.3, or blank to clear it." });
     }
-    const settings = await writeAppSettings({ requiredVersion: version });
-    return json(res, 200, { requiredVersion: settings.requiredVersion });
+    const settings = await writeAppSettings({ requiredVersion: version, requiredReason: version ? reason : "" });
+    return json(res, 200, { requiredVersion: settings.requiredVersion, requiredReason: settings.requiredReason });
+  }
+
+  if (pathname === "/api/admin/versions" && req.method === "GET") {
+    if (!requireAdmin(req, res)) return;
+    const [versions, settings] = await Promise.all([listManagedVersions(), readAppSettings()]);
+    return json(res, 200, {
+      versions: versions.map((entry) => ({ ...entry, disabled: settings.disabledVersions.includes(entry.version) }))
+    });
+  }
+
+  const versionToggleMatch = pathname.match(/^\/api\/admin\/versions\/([^/]+)\/(disable|enable)$/);
+  if (versionToggleMatch && req.method === "POST") {
+    if (!requireAdmin(req, res)) return;
+    const version = decodeURIComponent(versionToggleMatch[1]).replace(/^v/, "");
+    if (compareVersions(version, MIN_MANAGED_VERSION) < 0) {
+      return json(res, 400, { error: `Versions before ${MIN_MANAGED_VERSION} can't be managed here.` });
+    }
+    const disable = versionToggleMatch[2] === "disable";
+    const settings = await readAppSettings();
+    const disabledVersions = disable
+      ? Array.from(new Set([...settings.disabledVersions, version]))
+      : settings.disabledVersions.filter((candidate) => candidate !== version);
+    const next = await writeAppSettings({ disabledVersions });
+    return json(res, 200, { disabledVersions: next.disabledVersions });
   }
 
   if (pathname === "/api/admin/licenses" && req.method === "GET") {
@@ -1076,13 +1155,16 @@ async function handleApi(req, res, pathname) {
 
   if (pathname === "/api/releases/history" && req.method === "GET") {
     if (!requireUser(req, res)) return;
-    const history = await fetchReleaseHistory();
-    return json(res, 200, { releases: history.map((release) => publicRelease(release)) });
+    const [history, settings] = await Promise.all([fetchReleaseHistory(), readAppSettings()]);
+    const visible = history.filter((release) => !settings.disabledVersions.includes(String(release.tag_name || "").replace(/^v/, "")));
+    return json(res, 200, { releases: visible.map((release) => publicRelease(release)) });
   }
 
   const downloadMatch = pathname.match(/^\/api\/releases\/download\/(\d+)$/);
   if (downloadMatch && req.method === "GET") {
     if (!requireUser(req, res)) return;
+    const blockedVersion = await disabledVersionForAsset(downloadMatch[1]);
+    if (blockedVersion) return json(res, 403, { error: `Version ${blockedVersion} has been disabled. Please download the latest version.` });
     return streamReleaseAsset(req, res, downloadMatch[1]);
   }
 
@@ -1091,12 +1173,19 @@ async function handleApi(req, res, pathname) {
     const release = await fetchLatestRelease();
     if (!release) return appJson(res, 503, { error: "Downloads are not configured yet." });
     const settings = await readAppSettings();
-    return appJson(res, 200, { ...publicRelease(release, "/api/app/releases/download"), requiredVersion: settings.requiredVersion });
+    return appJson(res, 200, {
+      ...publicRelease(release, "/api/app/releases/download"),
+      requiredVersion: settings.requiredVersion,
+      requiredReason: settings.requiredReason,
+      disabledVersions: settings.disabledVersions
+    });
   }
 
   const appDownloadMatch = pathname.match(/^\/api\/app\/releases\/download\/(\d+)$/);
   if (appDownloadMatch && req.method === "GET") {
     if (!readAppSession(req)) return appJson(res, 401, { error: "Login required." });
+    const blockedVersion = await disabledVersionForAsset(appDownloadMatch[1]);
+    if (blockedVersion) return appJson(res, 403, { error: `Version ${blockedVersion} has been disabled. Please download the latest version.` });
     return streamReleaseAsset(req, res, appDownloadMatch[1]);
   }
 
