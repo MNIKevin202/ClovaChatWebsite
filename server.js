@@ -16,14 +16,14 @@ const LICENSES_FILE = path.join(DATA_DIR, "licenses.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const MONGODB_URI = process.env.mongoDB_URI || process.env.MONGODB_URI || process.env.MONGO_URI || "";
 const MONGODB_DB = process.env.MONGODB_DB || "clovachat";
-const SESSION_COOKIE = "clovachat_session";
+const SESSION_COOKIE = "quipora_session";
 const SESSION_DAYS = 7;
 const APP_TOKEN_DAYS = 30;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 const LICENSE_CODE_LENGTH = 62;
 const LICENSE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 const TOTP_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-const TOTP_ISSUER = "Chatterbox";
+const TOTP_ISSUER = "Quipora";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
 const GITHUB_RELEASES_REPO = process.env.GITHUB_RELEASES_REPO || "MNIKevin202/Chatterbox";
 const RELEASE_CACHE_MS = 5 * 60 * 1000;
@@ -439,7 +439,7 @@ async function fetchLatestRelease() {
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${GITHUB_TOKEN}`,
-      "User-Agent": "chatterbox-website",
+      "User-Agent": "quipora-website",
       "X-GitHub-Api-Version": "2022-11-28"
     }
   });
@@ -463,7 +463,7 @@ async function fetchReleaseHistory() {
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${GITHUB_TOKEN}`,
-      "User-Agent": "chatterbox-website",
+      "User-Agent": "quipora-website",
       "X-GitHub-Api-Version": "2022-11-28"
     }
   });
@@ -483,7 +483,7 @@ async function streamReleaseAsset(req, res, assetId) {
   const upstreamHeaders = {
     Accept: "application/octet-stream",
     Authorization: `Bearer ${GITHUB_TOKEN}`,
-    "User-Agent": "chatterbox-website"
+    "User-Agent": "quipora-website"
   };
   // Forward the client's Range header so partial/resumed/parallel-chunk downloads work.
   // Electron's native download manager issues Range requests; without honoring them the
@@ -1096,7 +1096,7 @@ async function handleApi(req, res, pathname) {
       return appJson(res, 401, { error: "Invalid username or password." });
     }
     if (user.role === "admin" && !user.totpSecret) {
-      return appJson(res, 403, { error: "Set up Google Authenticator on clovachat.com before using admin login in the Chatterbox app." });
+      return appJson(res, 403, { error: "Set up Google Authenticator on quipora.com before using admin login in the Quipora app." });
     }
     if (user.totpSecret && !verificationCode) {
       return appJson(res, 202, {
@@ -1241,11 +1241,11 @@ async function start() {
   await initStorage();
   await bootstrapAdminFromEnv();
   server.listen(PORT, () => {
-    console.log(`Chatterbox website listening on ${PORT}`);
+    console.log(`Quipora website listening on ${PORT}`);
   });
 }
 
 start().catch((error) => {
-  console.error("Failed to start Chatterbox website:", error);
+  console.error("Failed to start Quipora website:", error);
   process.exit(1);
 });

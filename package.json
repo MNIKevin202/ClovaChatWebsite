@@ -1,8 +1,8 @@
 {
-  "name": "chatterbox-website",
+  "name": "quipora-website",
   "version": "1.0.0",
   "private": true,
-  "description": "Chatterbox website with customer accounts and admin license tools.",
+  "description": "Quipora website with customer accounts and admin license tools.",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js && node --check auth.js && node --check signup.js && node --check account.js && node --check admin.js && node --check admin-setup.js && node --check script.js && node --check downloads.js"

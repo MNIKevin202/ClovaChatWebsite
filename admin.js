@@ -158,7 +158,7 @@ function renderRequiredUpdate(version, reason) {
   requiredUpdateBadge.textContent = has ? `v${version}+` : "Not set";
   requiredUpdateCard.classList.toggle("is-enabled", has);
   requiredUpdateCopy.textContent = has
-    ? `Chatterbox app users below v${version} are being blocked with a mandatory update prompt.${reason ? ` Reason: "${reason}"` : ""}`
+    ? `Quipora app users below v${version} are being blocked with a mandatory update prompt.${reason ? ` Reason: "${reason}"` : ""}`
     : "No version is currently required. Everyone can stay on their current build.";
 }
 
@@ -303,7 +303,7 @@ async function loadAdmin() {
   try {
     const data = await requestJson("/api/admin/me");
     adminUsername.textContent = data.user.username;
-    adminCopy.textContent = "Create trial and lifetime license codes for Chatterbox.";
+    adminCopy.textContent = "Create trial and lifetime license codes for Quipora.";
     renderTwofa(data.user);
     initDownloadPanel();
     await loadAccounts();
