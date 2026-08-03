@@ -25,7 +25,21 @@ const LICENSE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456
 const TOTP_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const TOTP_ISSUER = "Quipora";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
-const GITHUB_RELEASES_REPO = process.env.GITHUB_RELEASES_REPO || "MNIKevin202/Chatterbox";
+const GITHUB_RELEASES_REPO = process.env.GITHUB_RELEASES_REPO || "MNIKevin202/Chatterbox-Releases";
+
+// Chatterbox-Releases is a public repo, so the GitHub API works without auth. A token is
+// only needed to raise the unauthenticated rate limit (60/hr) — include it when present,
+// but never require it, so a missing/unset GITHUB_TOKEN doesn't make downloads look
+// "not configured".
+function githubHeaders(accept) {
+  const headers = {
+    Accept: accept,
+    "User-Agent": "quipora-website",
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+  if (GITHUB_TOKEN) headers.Authorization = `Bearer ${GITHUB_TOKEN}`;
+  return headers;
+}
 const RELEASE_CACHE_MS = 5 * 60 * 1000;
 // Version management (disabling individual releases) shipped in 0.2.22 — older versions have
 // no code path that would even understand a "disabled" response, so there's nothing to manage.
@@ -434,14 +448,8 @@ async function fetchLatestRelease() {
   if (releaseCache.data && Date.now() - releaseCache.fetchedAt < RELEASE_CACHE_MS) {
     return releaseCache.data;
   }
-  if (!GITHUB_TOKEN) return null;
   const response = await fetch(`https://api.github.com/repos/${GITHUB_RELEASES_REPO}/releases/latest`, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${GITHUB_TOKEN}`,
-      "User-Agent": "quipora-website",
-      "X-GitHub-Api-Version": "2022-11-28"
-    }
+    headers: githubHeaders("application/vnd.github+json")
   });
   if (!response.ok) return null;
   const release = await response.json();
@@ -458,14 +466,8 @@ async function fetchReleaseHistory() {
   if (releaseHistoryCache.data && Date.now() - releaseHistoryCache.fetchedAt < RELEASE_CACHE_MS) {
     return releaseHistoryCache.data;
   }
-  if (!GITHUB_TOKEN) return [];
   const response = await fetch(`https://api.github.com/repos/${GITHUB_RELEASES_REPO}/releases?per_page=20`, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${GITHUB_TOKEN}`,
-      "User-Agent": "quipora-website",
-      "X-GitHub-Api-Version": "2022-11-28"
-    }
+    headers: githubHeaders("application/vnd.github+json")
   });
   if (!response.ok) return [];
   const releases = await response.json();
@@ -479,12 +481,7 @@ async function fetchReleaseHistory() {
 }
 
 async function streamReleaseAsset(req, res, assetId) {
-  if (!GITHUB_TOKEN) return json(res, 503, { error: "Downloads are not configured yet." });
-  const upstreamHeaders = {
-    Accept: "application/octet-stream",
-    Authorization: `Bearer ${GITHUB_TOKEN}`,
-    "User-Agent": "quipora-website"
-  };
+  const upstreamHeaders = githubHeaders("application/octet-stream");
   // Forward the client's Range header so partial/resumed/parallel-chunk downloads work.
   // Electron's native download manager issues Range requests; without honoring them the
   // server would return the full file from byte 0 with a 200 while the client wrote it at
