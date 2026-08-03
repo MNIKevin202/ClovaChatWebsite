@@ -1253,6 +1253,98 @@ h3 {
   gap: 12px;
 }
 
+.version-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.version-summary {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.version-filters {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.version-filter {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.version-filter.is-active {
+  background: var(--panel-strong);
+  color: var(--text);
+}
+
+.version-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: 8px;
+}
+
+.version-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid rgba(125, 223, 157, 0.82);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.version-chip:hover {
+  background: var(--panel-strong);
+}
+
+.version-chip:active {
+  transform: translateY(1px);
+}
+
+.version-chip-version {
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.version-chip-state {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9df7bd;
+}
+
+.version-chip.is-disabled {
+  border-left-color: rgba(255, 130, 123, 0.82);
+  background: rgba(255, 130, 123, 0.06);
+}
+
+.version-chip.is-disabled .version-chip-version {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.version-chip.is-disabled .version-chip-state {
+  color: #ffb4ae;
+}
+
 .required-update-form {
   display: flex !important;
   flex-wrap: wrap;

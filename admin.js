@@ -250,24 +250,35 @@ requiredUpdateClearButton.addEventListener("click", async () => {
 
 function renderVersions(versions) {
   if (!versions.length) {
-    versionTable.innerHTML = '<p class="empty-state">No managed versions found yet (0.2.22+).</p>';
+    versionTable.innerHTML = '<p class="empty-state">No published versions found yet.</p>';
     return;
   }
-  versionTable.innerHTML = versions.map((entry) => `
-    <article class="license-row ${entry.disabled ? "status-border-expired" : "status-border-active"}" data-version="${entry.version}">
-      <div class="license-code-block">
-        <div class="license-card-top">
-          <span class="license-type">v${entry.version}</span>
-          <strong class="status-pill ${entry.disabled ? "status-expired" : "status-active"}">${entry.disabled ? "Disabled" : "Enabled"}</strong>
-        </div>
-      </div>
-      <div class="license-actions">
-        <button class="button ${entry.disabled ? "button-primary" : "button-secondary"}" data-toggle-version="${entry.version}" data-disable="${!entry.disabled}" type="button">
-          ${entry.disabled ? "Enable" : "Disable"}
-        </button>
-      </div>
-    </article>
+  const disabledCount = versions.filter((entry) => entry.disabled).length;
+  const enabledCount = versions.length - disabledCount;
+  const chips = versions.map((entry) => `
+    <button
+      class="version-chip ${entry.disabled ? "is-disabled" : "is-enabled"}"
+      data-toggle-version="${entry.version}"
+      data-disable="${!entry.disabled}"
+      data-state="${entry.disabled ? "disabled" : "enabled"}"
+      type="button"
+      title="${entry.disabled ? "Disabled — click to enable" : "Enabled — click to disable"}"
+    >
+      <span class="version-chip-version">v${entry.version}</span>
+      <span class="version-chip-state">${entry.disabled ? "Disabled" : "Enabled"}</span>
+    </button>
   `).join("");
+  versionTable.innerHTML = `
+    <div class="version-toolbar">
+      <span class="version-summary">${versions.length} versions · ${enabledCount} enabled · ${disabledCount} disabled</span>
+      <div class="version-filters" role="group" aria-label="Filter versions">
+        <button class="version-filter is-active" data-filter="all" type="button">All</button>
+        <button class="version-filter" data-filter="enabled" type="button">Enabled</button>
+        <button class="version-filter" data-filter="disabled" type="button">Disabled</button>
+      </div>
+    </div>
+    <div class="version-grid">${chips}</div>
+  `;
 }
 
 async function loadVersions() {
@@ -280,6 +291,15 @@ async function loadVersions() {
 }
 
 versionTable.addEventListener("click", async (event) => {
+  const filterButton = event.target.closest("[data-filter]");
+  if (filterButton) {
+    const filter = filterButton.dataset.filter;
+    versionTable.querySelectorAll(".version-filter").forEach((btn) => btn.classList.toggle("is-active", btn === filterButton));
+    versionTable.querySelectorAll(".version-chip").forEach((chip) => {
+      chip.hidden = filter !== "all" && chip.dataset.state !== filter;
+    });
+    return;
+  }
   const button = event.target.closest("[data-toggle-version]");
   if (!button) return;
   const version = button.dataset.toggleVersion;
