@@ -538,6 +538,25 @@ function publicRelease(release, downloadPrefix = "/api/releases/download") {
   };
 }
 
+/**
+ * The newest release the customer should actually be offered to download: GitHub's latest,
+ * unless it's been disabled (e.g. a bad build pulled after release), in which case we walk back
+ * to the most recent enabled release that still has installers attached. Returns null if none
+ * qualify.
+ */
+async function latestEnabledRelease() {
+  const settings = await readAppSettings();
+  const disabled = new Set(settings.disabledVersions);
+  const versionOf = (release) => String(release?.tag_name || "").replace(/^v/, "");
+  const latest = await fetchLatestRelease();
+  if (latest && !disabled.has(versionOf(latest))) return latest;
+  const history = await fetchReleaseHistory();
+  for (const release of history) {
+    if (!disabled.has(versionOf(release))) return release;
+  }
+  return null;
+}
+
 function compareVersions(a, b) {
   const partsA = String(a || "0").split(".").map((part) => Number(part) || 0);
   const partsB = String(b || "0").split(".").map((part) => Number(part) || 0);
@@ -1148,7 +1167,7 @@ async function handleApi(req, res, pathname) {
 
   if (pathname === "/api/releases/latest" && req.method === "GET") {
     if (!requireUser(req, res)) return;
-    const release = await fetchLatestRelease();
+    const release = await latestEnabledRelease();
     if (!release) return json(res, 503, { error: "Downloads are not configured yet." });
     return json(res, 200, publicRelease(release));
   }
@@ -1170,7 +1189,7 @@ async function handleApi(req, res, pathname) {
 
   if (pathname === "/api/app/releases/latest" && req.method === "GET") {
     if (!readAppSession(req)) return appJson(res, 401, { error: "Login required." });
-    const release = await fetchLatestRelease();
+    const release = await latestEnabledRelease();
     if (!release) return appJson(res, 503, { error: "Downloads are not configured yet." });
     const settings = await readAppSettings();
     return appJson(res, 200, {
