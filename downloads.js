@@ -67,6 +67,13 @@ function renderHistoryList(releases) {
     }
     row.append(links);
 
+    if (release.notes) {
+      const notes = document.createElement("p");
+      notes.className = "download-history-notes";
+      notes.textContent = release.notes;
+      row.append(notes);
+    }
+
     list.append(row);
   }
 }

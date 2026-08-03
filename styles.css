@@ -1169,6 +1169,17 @@ h3 {
   gap: 8px;
 }
 
+.download-history-notes {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(178, 194, 210, 0.12);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .license-form,
 .license-list {
   padding: 24px;
