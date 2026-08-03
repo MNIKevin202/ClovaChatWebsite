@@ -41,9 +41,12 @@ function githubHeaders(accept) {
   return headers;
 }
 const RELEASE_CACHE_MS = 5 * 60 * 1000;
-// Version management (disabling individual releases) shipped in 0.2.22 — older versions have
-// no code path that would even understand a "disabled" response, so there's nothing to manage.
-const MIN_MANAGED_VERSION = "0.2.22";
+// All published versions can be managed (disabled). Note: version-disable enforcement shipped
+// in the app at 0.2.22, so an already-running older app won't self-block on a "disabled"
+// response — but disabling any version still removes it from the customer "Download previous
+// version" list, which is the main reason to disable an old build. Kept as a floor constant so
+// it's easy to reintroduce a cutoff later; "0.0.0" means no effective floor.
+const MIN_MANAGED_VERSION = "0.0.0";
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -466,7 +469,7 @@ async function fetchReleaseHistory() {
   if (releaseHistoryCache.data && Date.now() - releaseHistoryCache.fetchedAt < RELEASE_CACHE_MS) {
     return releaseHistoryCache.data;
   }
-  const response = await fetch(`https://api.github.com/repos/${GITHUB_RELEASES_REPO}/releases?per_page=20`, {
+  const response = await fetch(`https://api.github.com/repos/${GITHUB_RELEASES_REPO}/releases?per_page=100`, {
     headers: githubHeaders("application/vnd.github+json")
   });
   if (!response.ok) return [];
