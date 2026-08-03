@@ -263,6 +263,7 @@ function renderVersions(versions) {
       data-state="${entry.disabled ? "disabled" : "enabled"}"
       type="button"
       title="${entry.disabled ? "Disabled — click to enable" : "Enabled — click to disable"}"
+      ${entry.disabled ? "hidden" : ""}
     >
       <span class="version-chip-version">v${entry.version}</span>
       <span class="version-chip-state">${entry.disabled ? "Disabled" : "Enabled"}</span>
@@ -272,8 +273,8 @@ function renderVersions(versions) {
     <div class="version-toolbar">
       <span class="version-summary">${versions.length} versions · ${enabledCount} enabled · ${disabledCount} disabled</span>
       <div class="version-filters" role="group" aria-label="Filter versions">
-        <button class="version-filter is-active" data-filter="all" type="button">All</button>
-        <button class="version-filter" data-filter="enabled" type="button">Enabled</button>
+        <button class="version-filter" data-filter="all" type="button">All</button>
+        <button class="version-filter is-active" data-filter="enabled" type="button">Enabled</button>
         <button class="version-filter" data-filter="disabled" type="button">Disabled</button>
       </div>
     </div>
