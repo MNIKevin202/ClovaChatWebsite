@@ -40,7 +40,10 @@ function githubHeaders(accept) {
   if (GITHUB_TOKEN) headers.Authorization = `Bearer ${GITHUB_TOKEN}`;
   return headers;
 }
-const RELEASE_CACHE_MS = 5 * 60 * 1000;
+const RELEASE_CACHE_MS = 60 * 1000;
+// Optional shared secret; when set, the release script can POST /api/releases/refresh to clear the
+// release caches the instant a new version publishes (so the app sees it without waiting for TTL).
+const RELEASE_REFRESH_SECRET = process.env.RELEASE_REFRESH_SECRET || "";
 // All published versions can be managed (disabled). Note: version-disable enforcement shipped
 // in the app at 0.2.22, so an already-running older app won't self-block on a "disabled"
 // response — but disabling any version still removes it from the customer "Download previous
@@ -1170,6 +1173,14 @@ async function handleApi(req, res, pathname) {
     const release = await latestEnabledRelease();
     if (!release) return json(res, 503, { error: "Downloads are not configured yet." });
     return json(res, 200, publicRelease(release));
+  }
+
+  if (pathname === "/api/releases/refresh" && req.method === "POST") {
+    if (!RELEASE_REFRESH_SECRET) return json(res, 404, { error: "Not found." });
+    if (String(req.headers["x-refresh-key"] || "") !== RELEASE_REFRESH_SECRET) return json(res, 403, { error: "Forbidden." });
+    releaseCache = { data: null, fetchedAt: 0 };
+    releaseHistoryCache = { data: null, fetchedAt: 0 };
+    return json(res, 200, { ok: true });
   }
 
   if (pathname === "/api/releases/history" && req.method === "GET") {
