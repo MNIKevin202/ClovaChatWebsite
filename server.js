@@ -14,6 +14,9 @@ const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const LICENSES_FILE = path.join(DATA_DIR, "licenses.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
+const SYNC_FILE = path.join(DATA_DIR, "sync.json");
+// When set, only Twitch tokens issued to this Client-Id are accepted for settings sync.
+const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID || "";
 const MONGODB_URI = process.env.mongoDB_URI || process.env.MONGODB_URI || process.env.MONGO_URI || "";
 const MONGODB_DB = process.env.MONGODB_DB || "clovachat";
 const SESSION_COOKIE = "quipora_session";
@@ -176,6 +179,95 @@ async function writeAppSettings(patch) {
   return next;
 }
 
+// --- Cross-device settings sync (keyed by Twitch user id) -------------------
+//
+// The Quipora app POSTs a sanitized settings blob here so the same account can
+// pull its preferences on another device. We authenticate by validating the
+// caller's Twitch OAuth token directly with Twitch (X-Twitch-Token header) and
+// key everything by the returned immutable user id. The token itself is only
+// used transiently for that validation call and is NEVER written to the
+// database — we store only the (non-sensitive) settings blob the app sends.
+
+// In-memory cache of validated tokens so we don't hit Twitch on every request.
+const twitchTokenCache = new Map(); // token -> { identity, expiresAt }
+
+async function validateTwitchToken(token) {
+  if (!token) return null;
+  const cached = twitchTokenCache.get(token);
+  if (cached && cached.expiresAt > Date.now()) return cached.identity;
+  let response;
+  try {
+    response = await fetch("https://id.twitch.tv/oauth2/validate", {
+      headers: { Authorization: `OAuth ${token}` }
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) {
+    twitchTokenCache.delete(token);
+    return null;
+  }
+  const body = await response.json().catch(() => null);
+  if (!body || !body.user_id) return null;
+  if (TWITCH_CLIENT_ID && body.client_id !== TWITCH_CLIENT_ID) return null;
+  const identity = { userId: String(body.user_id), login: String(body.login || "").toLowerCase() };
+  // Cache for the shorter of Twitch's stated lifetime or 5 minutes.
+  const ttlMs = Math.min(Math.max(Number(body.expires_in || 0) * 1000, 0), 5 * 60 * 1000) || 5 * 60 * 1000;
+  twitchTokenCache.set(token, { identity, expiresAt: Date.now() + ttlMs });
+  return identity;
+}
+
+async function readSyncDoc(userId) {
+  if (mongoDb) {
+    return mongoDb.collection("appSync").findOne({ _id: userId }, { projection: { _id: 0 } });
+  }
+  ensureDataDir();
+  try {
+    const data = JSON.parse(fs.readFileSync(SYNC_FILE, "utf8"));
+    return (data.syncs && data.syncs[userId]) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeSyncDoc(userId, doc) {
+  if (mongoDb) {
+    await mongoDb.collection("appSync").updateOne({ _id: userId }, { $set: doc }, { upsert: true });
+    return;
+  }
+  ensureDataDir();
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(SYNC_FILE, "utf8"));
+  } catch {
+    data = { syncs: {} };
+  }
+  if (!data.syncs) data.syncs = {};
+  data.syncs[userId] = doc;
+  fs.writeFileSync(SYNC_FILE, JSON.stringify(data, null, 2));
+}
+
+// Larger-limit body reader for the settings blob (readBody caps at 100 KB).
+function readSyncBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > 5_000_000) {
+        reject(new Error("Request body too large."));
+        req.destroy();
+      }
+    });
+    req.on("end", () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch {
+        reject(new Error("Invalid JSON."));
+      }
+    });
+  });
+}
+
 function json(res, status, body) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
@@ -196,7 +288,7 @@ function licenseCorsHeaders() {
 
 function appCorsHeaders() {
   return {
-    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Twitch-Token",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Origin": "*"
   };
@@ -1196,6 +1288,39 @@ async function handleApi(req, res, pathname) {
     const blockedVersion = await disabledVersionForAsset(downloadMatch[1]);
     if (blockedVersion) return json(res, 403, { error: `Version ${blockedVersion} has been disabled. Please download the latest version.` });
     return streamReleaseAsset(req, res, downloadMatch[1]);
+  }
+
+  if (pathname === "/api/app/sync" && req.method === "GET") {
+    const identity = await validateTwitchToken(String(req.headers["x-twitch-token"] || ""));
+    if (!identity) return appJson(res, 401, { error: "Invalid or expired Twitch session." });
+    const doc = await readSyncDoc(identity.userId);
+    return appJson(res, 200, {
+      ok: true,
+      blob: doc ? doc.blob : null,
+      updatedAt: doc ? doc.updatedAt || 0 : 0
+    });
+  }
+
+  if (pathname === "/api/app/sync" && req.method === "POST") {
+    const identity = await validateTwitchToken(String(req.headers["x-twitch-token"] || ""));
+    if (!identity) return appJson(res, 401, { error: "Invalid or expired Twitch session." });
+    let body;
+    try {
+      body = await readSyncBody(req);
+    } catch (error) {
+      return appJson(res, 400, { error: error.message || "Invalid request body." });
+    }
+    if (typeof body.blob === "undefined" || body.blob === null) {
+      return appJson(res, 400, { error: "Missing settings payload." });
+    }
+    const updatedAt = Number(body.updatedAt) || Date.now();
+    await writeSyncDoc(identity.userId, {
+      login: identity.login,
+      blob: body.blob,
+      updatedAt,
+      syncedAt: Date.now()
+    });
+    return appJson(res, 200, { ok: true, updatedAt });
   }
 
   if (pathname === "/api/app/releases/latest" && req.method === "GET") {
