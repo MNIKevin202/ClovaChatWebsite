@@ -1313,7 +1313,9 @@ async function handleApi(req, res, pathname) {
     if (typeof body.blob === "undefined" || body.blob === null) {
       return appJson(res, 400, { error: "Missing settings payload." });
     }
-    const updatedAt = Number(body.updatedAt) || Date.now();
+    // Server-authoritative timestamp: every write gets this server's clock, so last-write-wins is
+    // consistent across devices regardless of their local clock skew.
+    const updatedAt = Date.now();
     await writeSyncDoc(identity.userId, {
       login: identity.login,
       blob: body.blob,
