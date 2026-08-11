@@ -247,6 +247,24 @@ async function writeSyncDoc(userId, doc) {
   fs.writeFileSync(SYNC_FILE, JSON.stringify(data, null, 2));
 }
 
+async function deleteSyncDoc(userId) {
+  if (mongoDb) {
+    await mongoDb.collection("appSync").deleteOne({ _id: userId });
+    return;
+  }
+  ensureDataDir();
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(SYNC_FILE, "utf8"));
+  } catch {
+    return;
+  }
+  if (data.syncs && data.syncs[userId]) {
+    delete data.syncs[userId];
+    fs.writeFileSync(SYNC_FILE, JSON.stringify(data, null, 2));
+  }
+}
+
 // Larger-limit body reader for the settings blob (readBody caps at 100 KB).
 function readSyncBody(req) {
   return new Promise((resolve, reject) => {
@@ -289,7 +307,7 @@ function licenseCorsHeaders() {
 function appCorsHeaders() {
   return {
     "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Twitch-Token",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Origin": "*"
   };
 }
@@ -1323,6 +1341,13 @@ async function handleApi(req, res, pathname) {
       syncedAt: Date.now()
     });
     return appJson(res, 200, { ok: true, updatedAt });
+  }
+
+  if (pathname === "/api/app/sync" && req.method === "DELETE") {
+    const identity = await validateTwitchToken(String(req.headers["x-twitch-token"] || ""));
+    if (!identity) return appJson(res, 401, { error: "Invalid or expired Twitch session." });
+    await deleteSyncDoc(identity.userId);
+    return appJson(res, 200, { ok: true });
   }
 
   if (pathname === "/api/app/releases/latest" && req.method === "GET") {
