@@ -8,27 +8,53 @@ const { MongoClient } = require("mongodb");
 const QRCode = require("qrcode");
 const { URL } = require("url");
 
+/**
+ * Production environment variables are namespaced `Quipora_*` so they are unambiguous alongside
+ * other apps on the same host. The historical unprefixed names are still accepted as fallbacks,
+ * but the namespaced ones take precedence. An empty value counts as unset, so a blank variable
+ * left over in a deployment panel cannot shadow a real one.
+ *
+ * `PORT` is deliberately not namespaced: it is the container's contract with the platform (the
+ * Dockerfile sets it and the HEALTHCHECK reads it), not a Quipora setting.
+ */
+function env(name, ...fallbacks) {
+  for (const key of [`Quipora_${name}`, name, ...fallbacks]) {
+    const value = process.env[key];
+    if (value !== undefined && value !== "") return value;
+  }
+  return "";
+}
+
 const PORT = Number(process.env.PORT || 4173);
 const ROOT = __dirname;
-const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
+const DATA_DIR = env("DATA_DIR") || path.join(ROOT, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const LICENSES_FILE = path.join(DATA_DIR, "licenses.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const SYNC_FILE = path.join(DATA_DIR, "sync.json");
 // When set, only Twitch tokens issued to this Client-Id are accepted for settings sync.
-const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID || "";
-const MONGODB_URI = process.env.mongoDB_URI || process.env.MONGODB_URI || process.env.MONGO_URI || "";
-const MONGODB_DB = process.env.MONGODB_DB || "clovachat";
+const TWITCH_CLIENT_ID = env("TWITCH_CLIENT_ID");
+const MONGODB_URI = env("mongoDB_URI", "MONGODB_URI", "MONGO_URI");
+const MONGODB_DB = env("MONGODB_DB") || "clovachat";
+/**
+ * Starting without MongoDB drops back to JSON files, which means an EMPTY database (looking exactly
+ * like total data loss) and writes credential material under the web root. That must never happen
+ * by accident in production, so it now requires an explicit opt-in instead of being the default
+ * behaviour of a missing variable.
+ */
+const ALLOW_JSON_STORE = env("ALLOW_JSON_STORE") === "true";
 const SESSION_COOKIE = "quipora_session";
 const SESSION_DAYS = 7;
 const APP_TOKEN_DAYS = 30;
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+// Signs session cookies and app bearer tokens. Without a persistent value every restart issues a
+// new secret and silently signs everyone out, so production must set it explicitly.
+const SESSION_SECRET = env("SESSION_SECRET") || crypto.randomBytes(32).toString("hex");
 const LICENSE_CODE_LENGTH = 62;
 const LICENSE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 const TOTP_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const TOTP_ISSUER = "Quipora";
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
-const GITHUB_RELEASES_REPO = process.env.GITHUB_RELEASES_REPO || "MNIKevin202/Chatterbox-Releases";
+const GITHUB_TOKEN = env("GITHUB_TOKEN");
+const GITHUB_RELEASES_REPO = env("GITHUB_RELEASES_REPO") || "MNIKevin202/Chatterbox-Releases";
 
 // Chatterbox-Releases is a public repo, so the GitHub API works without auth. A token is
 // only needed to raise the unauthenticated rate limit (60/hr) — include it when present,
@@ -46,7 +72,7 @@ function githubHeaders(accept) {
 const RELEASE_CACHE_MS = 60 * 1000;
 // Optional shared secret; when set, the release script can POST /api/releases/refresh to clear the
 // release caches the instant a new version publishes (so the app sees it without waiting for TTL).
-const RELEASE_REFRESH_SECRET = process.env.RELEASE_REFRESH_SECRET || "";
+const RELEASE_REFRESH_SECRET = env("RELEASE_REFRESH_SECRET");
 // All published versions can be managed (disabled). Note: version-disable enforcement shipped
 // in the app at 0.2.22, so an already-running older app won't self-block on a "disabled"
 // response — but disabling any version still removes it from the customer "Download previous
@@ -81,8 +107,16 @@ function ensureDataDir() {
 
 async function initStorage() {
   if (!MONGODB_URI) {
+    if (!ALLOW_JSON_STORE) {
+      throw new Error(
+        "Quipora_mongoDB_URI is not set. Refusing to start: falling back to the JSON datastore " +
+          "would serve an EMPTY database (no accounts, no licenses) and write credential material " +
+          "under the web root. Set Quipora_mongoDB_URI, or set Quipora_ALLOW_JSON_STORE=true to " +
+          "deliberately run without MongoDB (local development only)."
+      );
+    }
     ensureDataDir();
-    console.log(`Using JSON data storage at ${DATA_DIR}`);
+    console.warn(`WARNING: no MongoDB configured. Using JSON data storage at ${DATA_DIR}.`);
     return;
   }
 
@@ -412,7 +446,7 @@ function readAppSession(req) {
 }
 
 function setSessionCookie(res, token) {
-  const secure = process.env.COOKIE_SECURE === "true" ? "; Secure" : "";
+  const secure = env("COOKIE_SECURE") === "true" ? "; Secure" : "";
   res.setHeader(
     "Set-Cookie",
     `${SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_DAYS * 24 * 60 * 60}${secure}`
@@ -539,6 +573,12 @@ function readBody(req) {
 }
 
 async function adminExists() {
+  // The container HEALTHCHECK polls this (via /api/admin/setup-status) every 30s, so in Mongo mode
+  // it asks for one matching document rather than pulling the whole users collection. Identical
+  // result, but the probe stays cheap and read-only no matter how many accounts exist.
+  if (mongoDb) {
+    return (await mongoDb.collection("users").findOne({ role: "admin" }, { projection: { _id: 1 } })) !== null;
+  }
   return (await readUsers()).some((user) => user.role === "admin");
 }
 
@@ -724,8 +764,8 @@ function requireUser(req, res) {
 }
 
 async function bootstrapAdminFromEnv() {
-  const username = normalizeUsername(process.env.ADMIN_USERNAME);
-  const password = String(process.env.ADMIN_PASSWORD || "");
+  const username = normalizeUsername(env("ADMIN_USERNAME"));
+  const password = env("ADMIN_PASSWORD");
   if (!username || !password || await adminExists()) return;
   const validationError = validateCredentials(username, password);
   if (validationError) {
@@ -1391,6 +1431,40 @@ function sendFile(res, filePath) {
   });
 }
 
+/**
+ * Paths that must never be served as static files, regardless of how the request is spelled.
+ *
+ * `data/` is the critical one: in JSON-datastore mode it holds users.json with password hashes,
+ * salts and TOTP secrets, and `.json` is in the MIME table — so it was publicly downloadable at
+ * /data/users.json. Production now refuses to start without MongoDB (see initStorage), which
+ * removes the situation that creates those files; this is the second, independent guard so the
+ * files can never be served even if one somehow exists.
+ *
+ * The rest are source/config disclosure: server.js and package.json were both publicly readable.
+ */
+const STATIC_DENY_DIRS = ["data", "node_modules", ".git"];
+const STATIC_DENY_FILES = [
+  "server.js",
+  "package.json",
+  "package-lock.json",
+  "dockerfile",
+  "captain-definition",
+  "release.sh",
+  "generate-auth.sh"
+];
+
+function isDeniedStaticPath(relative) {
+  // Compare case-insensitively: macOS/Windows filesystems would otherwise let /Server.js through.
+  const normalized = relative.split(path.sep).join("/").toLowerCase().replace(/^\/+/, "");
+  if (!normalized) return false;
+  const [first] = normalized.split("/");
+  if (STATIC_DENY_DIRS.includes(first)) return true;
+  if (first.startsWith(".")) return true;
+  if (STATIC_DENY_FILES.includes(normalized)) return true;
+  if (normalized.endsWith(".env") || normalized.includes(".env.")) return true;
+  return false;
+}
+
 function staticPath(pathname) {
   if (pathname === "/") return path.join(ROOT, "index.html");
   if (pathname === "/login") return path.join(ROOT, "login.html");
@@ -1398,9 +1472,17 @@ function staticPath(pathname) {
   if (pathname === "/account") return path.join(ROOT, "account.html");
   if (pathname === "/admin") return path.join(ROOT, "admin.html");
   if (pathname === "/admin/setup") return path.join(ROOT, "admin-setup.html");
-  const decoded = decodeURIComponent(pathname);
+  let decoded;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return null; // malformed percent-encoding
+  }
   const filePath = path.normalize(path.join(ROOT, decoded));
-  if (!filePath.startsWith(ROOT)) return null;
+  // Boundary-aware containment check: a bare startsWith(ROOT) would also accept a sibling
+  // directory whose name merely begins with the root path.
+  if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) return null;
+  if (isDeniedStaticPath(path.relative(ROOT, filePath))) return null;
   return filePath;
 }
 
@@ -1412,7 +1494,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     const filePath = staticPath(url.pathname);
-    if (!filePath) return json(res, 400, { error: "Invalid path." });
+    if (!filePath) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Not found");
+      return;
+    }
     sendFile(res, filePath);
   } catch (error) {
     json(res, 500, { error: error.message || "Server error." });
