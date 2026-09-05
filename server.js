@@ -43,6 +43,14 @@ const MONGODB_DB = env("MONGODB_DB") || "clovachat";
  * behaviour of a missing variable.
  */
 const ALLOW_JSON_STORE = env("ALLOW_JSON_STORE") === "true";
+// Realtime sync (Phase 4). Requires MongoDB — the authoritative per-key state is persisted, never
+// held only in the socket layer — and is therefore off whenever the JSON fallback is in use.
+// Set Quipora_REALTIME_ENABLED=false to serve the site with the WebSocket endpoint disabled; the
+// legacy HTTP sync endpoint keeps working either way, which is what lets old and new desktop
+// clients run against the same backend during a rollout.
+const REALTIME_ENABLED = env("REALTIME_ENABLED") !== "false";
+const REALTIME_DEBUG = env("REALTIME_DEBUG") === "true";
+let realtime = null;
 const SESSION_COOKIE = "quipora_session";
 const SESSION_DAYS = 7;
 const APP_TOKEN_DAYS = 30;
@@ -1508,9 +1516,72 @@ const server = http.createServer(async (req, res) => {
 async function start() {
   await initStorage();
   await bootstrapAdminFromEnv();
+  await startRealtime();
   server.listen(PORT, () => {
     console.log(`Quipora website listening on ${PORT}`);
   });
+}
+
+/**
+ * Brings up the realtime coordinator alongside the existing HTTP API.
+ *
+ * Additive by construction: it only adds an `upgrade` listener on the same server, so every
+ * existing route behaves exactly as before and a desktop client that knows nothing about
+ * WebSockets is unaffected. Failure to start is logged and swallowed rather than taking the website
+ * down with it — realtime sync degrading to the legacy HTTP poll is a far better outcome than
+ * quipora.com not serving at all.
+ */
+async function startRealtime() {
+  if (!REALTIME_ENABLED) {
+    console.log("Realtime sync disabled (Quipora_REALTIME_ENABLED=false).");
+    return;
+  }
+  if (!mongoDb) {
+    console.warn("Realtime sync not started: it requires MongoDB, and no database is attached.");
+    return;
+  }
+  try {
+    const { attachRealtime } = require("./realtime/server");
+    const { createPresence } = require("./realtime/presence");
+    const { createMongoStore } = require("./realtime/store");
+
+    const store = createMongoStore(mongoDb);
+    await store.ensureIndexes();
+    const presence = createPresence();
+
+    realtime = attachRealtime(server, {
+      store,
+      presence,
+      validateToken: validateTwitchToken,
+      path: "/ws",
+      logger: realtimeLogger
+    });
+    console.log("Realtime sync listening on /ws");
+  } catch (error) {
+    console.error("Realtime sync failed to start; the HTTP sync endpoint remains available:", error);
+  }
+}
+
+/**
+ * Diagnostics that never carry a credential.
+ *
+ * Account ids and device ids are logged because a failure that cannot be attributed to a device is
+ * not diagnosable; tokens, values and channel *contents* are not. Debug-level output is suppressed
+ * unless explicitly enabled, so ordinary operation stays quiet.
+ */
+function realtimeLogger(level, message, context) {
+  if (level === "debug" && !REALTIME_DEBUG) return;
+  const parts = [];
+  if (context) {
+    for (const [key, value] of Object.entries(context)) {
+      if (value === undefined || value === null) continue;
+      parts.push(`${key}=${value}`);
+    }
+  }
+  const line = parts.length ? `${message} ${parts.join(" ")}` : message;
+  if (level === "error") console.error(line);
+  else if (level === "warn") console.warn(line);
+  else console.log(line);
 }
 
 start().catch((error) => {
