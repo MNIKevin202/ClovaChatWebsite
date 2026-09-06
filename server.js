@@ -1516,10 +1516,25 @@ const server = http.createServer(async (req, res) => {
 async function start() {
   await initStorage();
   await bootstrapAdminFromEnv();
-  await startRealtime();
-  server.listen(PORT, () => {
-    console.log(`Quipora website listening on ${PORT}`);
-  });
+  // Bind the port BEFORE bringing realtime up.
+  //
+  // Realtime initialisation must never be able to stop the website serving. That was always the
+  // intent, but awaiting it here made a *hang* fatal in a way the try/catch inside it cannot help
+  // with — and that is exactly how the first Phase 4 deploy failed: the container started, the
+  // startup promise never settled, nothing ever listened on port 80, and the platform correctly
+  // rolled back. Listening first means the worst case for realtime is that realtime is missing,
+  // which is a degraded feature rather than an outage.
+  await new Promise((resolve) => server.listen(PORT, resolve));
+  console.log(`Quipora website listening on ${PORT}`);
+  void startRealtime();
+}
+
+/** Rejects if a startup step takes implausibly long, so a stall is logged instead of hanging. */
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_resolve, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms).unref())
+  ]);
 }
 
 /**
@@ -1546,7 +1561,10 @@ async function startRealtime() {
     const { createMongoStore } = require("./realtime/store");
 
     const store = createMongoStore(mongoDb);
-    await store.ensureIndexes();
+    // Logged step by step: the first deploy gave no clue how far startup had got before it stalled.
+    console.log("Realtime sync: ensuring indexes...");
+    await withTimeout(store.ensureIndexes(), 30_000, "realtime ensureIndexes");
+    console.log("Realtime sync: indexes ready.");
     const presence = createPresence();
 
     realtime = attachRealtime(server, {
