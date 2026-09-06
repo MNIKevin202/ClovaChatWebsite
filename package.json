@@ -5,20 +5,13 @@
   "description": "Quipora website with customer accounts and admin license tools.",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check auth.js && node --check signup.js && node --check account.js && node --check admin.js && node --check admin-setup.js && node --check script.js && node --check downloads.js",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "check": "node --check server.js && node --check auth.js && node --check signup.js && node --check account.js && node --check admin.js && node --check admin-setup.js && node --check script.js && node --check downloads.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "mongodb": "^7.4.0",
-    "qrcode": "^1.5.4",
-    "ws": "^8.21.3"
-  },
-  "devDependencies": {
-    "mongodb-memory-server": "^10.4.3",
-    "vitest": "^3.2.7"
+    "qrcode": "^1.5.4"
   }
 }
