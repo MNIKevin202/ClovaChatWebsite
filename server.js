@@ -1450,7 +1450,36 @@ function sendFile(res, filePath) {
  *
  * The rest are source/config disclosure: server.js and package.json were both publicly readable.
  */
+/**
+ * Directories that may be served. Everything else is refused.
+ *
+ * This was a denylist, and it failed exactly the way denylists do: Phase 4 added `realtime/` and
+ * `test/`, neither was on the list, and both became publicly readable the moment they shipped. The
+ * default has to be "not served", so that adding a directory to the project cannot silently publish
+ * it. Only asset directories belong here; the site's own pages and scripts are flat files at the
+ * root and are unaffected.
+ */
+const STATIC_ALLOW_DIRS = new Set(["assets"]);
 const STATIC_DENY_DIRS = ["data", "node_modules", ".git"];
+
+/**
+ * Root-level files are allowlisted for the same reason directories are.
+ *
+ * The root holds the site's pages and its browser scripts side by side with server source and build
+ * config, so "serve everything except a list" means every file added to the project is public until
+ * someone remembers otherwise. These are the extensions a browser legitimately fetches, plus the
+ * exact scripts the pages load — verified against the `src="..."` attributes in the HTML.
+ */
+const STATIC_ALLOW_EXTENSIONS = new Set([".html", ".css", ".png", ".svg", ".ico", ".webp", ".jpg", ".jpeg", ".gif", ".woff", ".woff2"]);
+const STATIC_ALLOW_ROOT_SCRIPTS = new Set([
+  "account.js",
+  "admin-setup.js",
+  "admin.js",
+  "auth.js",
+  "downloads.js",
+  "script.js",
+  "signup.js"
+]);
 const STATIC_DENY_FILES = [
   "server.js",
   "package.json",
@@ -1465,11 +1494,21 @@ function isDeniedStaticPath(relative) {
   // Compare case-insensitively: macOS/Windows filesystems would otherwise let /Server.js through.
   const normalized = relative.split(path.sep).join("/").toLowerCase().replace(/^\/+/, "");
   if (!normalized) return false;
-  const [first] = normalized.split("/");
+  const segments = normalized.split("/");
+  const [first] = segments;
+  // Anything inside a directory must be inside an allowed one.
+  if (segments.length > 1 && !STATIC_ALLOW_DIRS.has(first)) return true;
   if (STATIC_DENY_DIRS.includes(first)) return true;
   if (first.startsWith(".")) return true;
   if (STATIC_DENY_FILES.includes(normalized)) return true;
   if (normalized.endsWith(".env") || normalized.includes(".env.")) return true;
+  // Root-level file: allowed only if it is a browser asset type or one of the page scripts.
+  if (segments.length === 1) {
+    const dot = normalized.lastIndexOf(".");
+    const extension = dot === -1 ? "" : normalized.slice(dot);
+    if (STATIC_ALLOW_ROOT_SCRIPTS.has(normalized)) return false;
+    if (!STATIC_ALLOW_EXTENSIONS.has(extension)) return true;
+  }
   return false;
 }
 

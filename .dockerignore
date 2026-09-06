@@ -4,3 +4,9 @@ README.md
 data
 node_modules
 npm-debug.log
+# Never needed at runtime; keeping them out of the image means they cannot be served
+# even if the static handler is ever wrong again.
+test
+vitest.config.mjs
+.github
+*.test.mjs
