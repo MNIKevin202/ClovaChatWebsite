@@ -5,6 +5,7 @@ const path = require("path");
 const { Readable } = require("stream");
 const { pipeline } = require("stream/promises");
 const { MongoClient } = require("mongodb");
+const chatLogs = require("./chatlogs.js");
 const QRCode = require("qrcode");
 const { URL } = require("url");
 
@@ -137,6 +138,7 @@ async function initStorage() {
     { unique: true, partialFilterExpression: { role: "admin" } }
   );
   await mongoDb.collection("licenses").createIndex({ code: 1 }, { unique: true });
+  await chatLogs.ensureIndexes(mongoDb);
   console.log(`Using MongoDB data storage: ${MONGODB_DB}`);
 }
 
@@ -1354,6 +1356,62 @@ async function handleApi(req, res, pathname) {
     const blockedVersion = await disabledVersionForAsset(downloadMatch[1]);
     if (blockedVersion) return json(res, 403, { error: `Version ${blockedVersion} has been disabled. Please download the latest version.` });
     return streamReleaseAsset(req, res, downloadMatch[1]);
+  }
+
+  // --- Cloud chat logs -------------------------------------------------------------------
+  // Same auth as settings sync: the Twitch token identifies the account, and logs are stored per
+  // Twitch user id. Requires Mongo; there is no JSON-file fallback, because an unbounded log store
+  // on the filesystem is exactly what the datastore fallback was removed for.
+  if (pathname === "/api/app/logs" && req.method === "POST") {
+    const identity = await validateTwitchToken(String(req.headers["x-twitch-token"] || ""));
+    if (!identity) return appJson(res, 401, { error: "Invalid or expired Twitch session." });
+    if (!mongoDb) return appJson(res, 503, { error: "Cloud logging is unavailable." });
+    let body;
+    try {
+      body = await readSyncBody(req);
+    } catch (error) {
+      return appJson(res, 400, { error: error.message || "Invalid request body." });
+    }
+    const batches = Array.isArray(body.batches) ? body.batches : [];
+    if (batches.length === 0) return appJson(res, 200, { ok: true, stored: 0 });
+    if (batches.length > 50) return appJson(res, 400, { error: "Too many batches in one request." });
+    let stored = 0;
+    let refusal;
+    for (const batch of batches) {
+      const result = await chatLogs.appendLines(mongoDb, identity.userId, batch || {});
+      stored += result.stored || 0;
+      if (!result.ok && !refusal) refusal = result.reason;
+    }
+    // A refusal is reported without failing the request: the client keeps what did not land rather
+    // than retrying a batch the server will never accept.
+    return appJson(res, 200, { ok: true, stored, refused: refusal });
+  }
+
+  if (pathname === "/api/app/logs" && req.method === "GET") {
+    const identity = await validateTwitchToken(String(req.headers["x-twitch-token"] || ""));
+    if (!identity) return appJson(res, 401, { error: "Invalid or expired Twitch session." });
+    if (!mongoDb) return appJson(res, 503, { error: "Cloud logging is unavailable." });
+    const query = new URL(req.url, `http://${req.headers.host || "localhost"}`).searchParams;
+    const channel = query.get("channel") || "";
+    const day = query.get("day") || "";
+    if (channel && day) {
+      const result = await chatLogs.readDay(mongoDb, identity.userId, channel, day);
+      return appJson(res, 200, { ok: true, ...result });
+    }
+    const available = await chatLogs.listAvailable(mongoDb, identity.userId, {
+      channel,
+      limit: Number(query.get("limit") || 90)
+    });
+    return appJson(res, 200, { ok: true, available, retentionDays: chatLogs.RETENTION_DAYS });
+  }
+
+  if (pathname === "/api/app/logs" && req.method === "DELETE") {
+    const identity = await validateTwitchToken(String(req.headers["x-twitch-token"] || ""));
+    if (!identity) return appJson(res, 401, { error: "Invalid or expired Twitch session." });
+    if (!mongoDb) return appJson(res, 503, { error: "Cloud logging is unavailable." });
+    const query = new URL(req.url, `http://${req.headers.host || "localhost"}`).searchParams;
+    const result = await chatLogs.purgeAccount(mongoDb, identity.userId, query.get("channel") || "");
+    return appJson(res, 200, { ok: true, ...result });
   }
 
   if (pathname === "/api/app/sync" && req.method === "GET") {
