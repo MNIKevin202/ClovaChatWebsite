@@ -461,3 +461,40 @@ describe("the flood guard, and what a seed must do about it", () => {
     expect(second.filter((r) => r.status === "rejected").length).toBeGreaterThan(0);
   }, 30_000);
 });
+
+describe("presence must track what a client is actually joined to", () => {
+  it("targets a channel a client joined after connecting", async () => {
+    // Presence used to refresh only when settings changed, so a channel joined afterwards was
+    // invisible to command targeting — leave-everywhere would quietly miss that machine.
+    const target = await client({ deviceId: "joins-later" });
+    const issuer = await client({ deviceId: "issuer" });
+    await target.hello({ joined: [] });
+    await issuer.hello({ joined: [] });
+    await settle();
+
+    // Nothing to target yet.
+    expect(server.presence.joinedTo("account-1", "twitch:later")).toHaveLength(0);
+
+    target.setJoined(["twitch:later"]);
+    await until(async () => server.presence.joinedTo("account-1", "twitch:later").length === 1);
+
+    const result = await issuer.command("leave-channel-everywhere", "twitch:later");
+    expect(result.targets).toEqual(["joins-later"]);
+    await until(async () => target.commandExecutions.length === 1);
+  });
+
+  it("stops targeting a channel a client has parted", async () => {
+    const target = await client({ deviceId: "parts-later" });
+    const issuer = await client({ deviceId: "issuer2" });
+    await target.hello({ joined: ["twitch:gone"] });
+    await issuer.hello({ joined: [] });
+    await settle();
+    expect(server.presence.joinedTo("account-1", "twitch:gone")).toHaveLength(1);
+
+    target.setJoined([]);
+    await until(async () => server.presence.joinedTo("account-1", "twitch:gone").length === 0);
+
+    const result = await issuer.command("leave-channel-everywhere", "twitch:gone");
+    expect(result.targets).toEqual([]);
+  });
+});
