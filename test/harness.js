@@ -128,9 +128,15 @@ class TestClient {
     }
   }
 
-  /** Applies an authoritative change. Anything not newer than what we have is ignored. */
+  /**
+   * Applies an authoritative change.
+   *
+   * Mirrors src/main/realtimeClient.ts exactly: the sequence is a high-water mark and anything at
+   * or below it is dropped, whatever key it carries. Being stricter here than the real client would
+   * make the harness quietly forgiving of an ordering bug the shipped client would not survive.
+   */
   _apply(change) {
-    if (change.seq <= this.lastSeq && this.applied.has(change.key)) {
+    if (change.seq <= this.lastSeq) {
       this.duplicateApplies += 1;
       return;
     }

@@ -57,7 +57,7 @@ function createMemoryStore() {
   function account(accountId) {
     let existing = accounts.get(accountId);
     if (!existing) {
-      existing = { seq: 0, state: new Map(), log: [], byMutationId: new Map() };
+      existing = { seq: 0, logFloor: 0, state: new Map(), log: [], byMutationId: new Map() };
       accounts.set(accountId, existing);
     }
     return existing;
@@ -67,6 +67,8 @@ function createMemoryStore() {
     if (acc.log.length <= LOG_MAX_ENTRIES_PER_ACCOUNT) return;
     const dropped = acc.log.splice(0, acc.log.length - LOG_MAX_ENTRIES_PER_ACCOUNT);
     for (const entry of dropped) acc.byMutationId.delete(entry.mutationId);
+    // Everything at or below this point is gone for good; a client behind it needs a snapshot.
+    acc.logFloor = Math.max(acc.logFloor, dropped[dropped.length - 1].seq);
   }
 
   return {
@@ -106,10 +108,8 @@ function createMemoryStore() {
     async changesSince(accountId, sinceSeq) {
       const acc = account(accountId);
       if (sinceSeq >= acc.seq) return { ok: true, changes: [], seq: acc.seq };
-      const oldest = acc.log.length ? acc.log[0].seq : null;
-      // The client needs everything after sinceSeq. If the oldest entry we still hold is newer than
-      // the very next one it needs, the gap is unrecoverable and it must take a snapshot.
-      if (oldest === null || oldest > sinceSeq + 1) {
+      // Unrecoverable only if something the client still needs has actually been discarded.
+      if (sinceSeq < acc.logFloor) {
         return { ok: false, reason: "history-unavailable", seq: acc.seq };
       }
       return { ok: true, changes: acc.log.filter((entry) => entry.seq > sinceSeq), seq: acc.seq };
@@ -124,6 +124,7 @@ function createMemoryStore() {
       const acc = account(accountId);
       acc.log = [];
       acc.byMutationId.clear();
+      acc.logFloor = acc.seq;
     }
   };
 }
@@ -159,7 +160,11 @@ function createMongoStore(db) {
       .skip(LOG_MAX_ENTRIES_PER_ACCOUNT - 1)
       .limit(1)
       .next();
-    if (cutoff) await log().deleteMany({ accountId, seq: { $lt: cutoff.seq } });
+    if (!cutoff) return;
+    await log().deleteMany({ accountId, seq: { $lt: cutoff.seq } });
+    // Record what is gone, so resume availability is judged on what was discarded rather than on
+    // where the surviving log happens to start.
+    await seqs().updateOne({ _id: accountId }, { $max: { logFloor: Number(cutoff.seq) - 1 } });
   }
 
   return {
@@ -178,6 +183,11 @@ function createMongoStore(db) {
     async currentSeq(accountId) {
       const doc = await seqs().findOne({ _id: accountId });
       return doc ? Number(doc.seq) : 0;
+    },
+
+    async logFloor(accountId) {
+      const doc = await seqs().findOne({ _id: accountId });
+      return doc && doc.logFloor ? Number(doc.logFloor) : 0;
     },
 
     async applyMutation(accountId, mutation) {
@@ -233,10 +243,11 @@ function createMongoStore(db) {
     },
 
     async changesSince(accountId, sinceSeq) {
-      const seq = await this.currentSeq(accountId);
+      const doc = await seqs().findOne({ _id: accountId });
+      const seq = doc ? Number(doc.seq) : 0;
       if (sinceSeq >= seq) return { ok: true, changes: [], seq };
-      const oldest = await log().find({ accountId }, { projection: { seq: 1 } }).sort({ seq: 1 }).limit(1).next();
-      if (!oldest || Number(oldest.seq) > sinceSeq + 1) {
+      const floor = doc && doc.logFloor ? Number(doc.logFloor) : 0;
+      if (sinceSeq < floor) {
         return { ok: false, reason: "history-unavailable", seq };
       }
       const changes = await log()
@@ -256,6 +267,8 @@ function createMongoStore(db) {
 
     async _truncateLog(accountId) {
       await log().deleteMany({ accountId });
+      const seq = await this.currentSeq(accountId);
+      await seqs().updateOne({ _id: accountId }, { $max: { logFloor: seq } }, { upsert: true });
     }
   };
 }

@@ -63,6 +63,33 @@ function attachRealtime(httpServer, options) {
   const log = options.logger || (() => {});
 
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
+  /**
+   * Serialises mutation handling per account.
+   *
+   * Applying a mutation awaits the database, so without this two mutations for one account can
+   * complete in either order and their deltas go out in either order. Clients treat the sequence as
+   * a high-water mark and ignore anything at or below it, so an out-of-order delta would not merely
+   * arrive late — it would be discarded, and if it carried a *different* key that key's change
+   * would be lost on that client while remaining correct in the database. Divergence that only
+   * shows up under concurrency is exactly the kind that survives to production, so the fan-out is
+   * kept strictly in sequence order at the source.
+   *
+   * One chain per account, so unrelated accounts never wait on each other.
+   */
+  const accountQueues = new Map();
+
+  function enqueue(accountId, task) {
+    const previous = accountQueues.get(accountId) || Promise.resolve();
+    // `.catch` on the stored chain so one failed mutation cannot wedge the account's queue.
+    const next = previous.then(task, task);
+    const tracked = next.catch(() => {});
+    accountQueues.set(accountId, tracked);
+    // Release the entry once this is the tail and it has settled, so idle accounts hold nothing.
+    void tracked.then(() => {
+      if (accountQueues.get(accountId) === tracked) accountQueues.delete(accountId);
+    });
+    return next;
+  }
   /** Commands awaiting acknowledgement: commandId -> { accountId, targets:Set, acked:Set, issuedBy } */
   const pendingCommands = new Map();
 
@@ -193,7 +220,8 @@ function attachRealtime(httpServer, options) {
         send(ws, "pong", {});
         return;
       case "mutate":
-        return handleMutate(ws, connection, message);
+        // Queued per account so deltas are emitted in the same order the sequences were assigned.
+        return enqueue(connection.accountId, () => handleMutate(ws, connection, message));
       case "presence":
         return handlePresence(ws, connection, message);
       case "command":

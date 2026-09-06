@@ -18,6 +18,7 @@
     "ws": "^8.21.3"
   },
   "devDependencies": {
+    "mongodb-memory-server": "^10.4.3",
     "vitest": "^3.2.7"
   }
 }
