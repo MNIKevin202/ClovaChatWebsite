@@ -424,3 +424,40 @@ describe("channel preferences use the canonical channel key", () => {
     await expect(a.mutate("channel.twitch-111:#tomcornishh.favorite", true)).rejects.toThrow(/channel-key-invalid/);
   });
 });
+
+describe("the flood guard, and what a seed must do about it", () => {
+  it("accepts a chunk at the limit", async () => {
+    const a = await client({ deviceId: "seeder" });
+    await a.hello();
+    const results = await Promise.allSettled(
+      Array.from({ length: 150 }, (_, i) => a.mutate(`settings.seed${i}`, i))
+    );
+    expect(results.filter((r) => r.status === "rejected")).toHaveLength(0);
+    expect(await server.store.currentSeq("account-1")).toBe(150);
+  }, 30_000);
+
+  it("rejects the excess beyond the limit within one window", async () => {
+    // This is what an unpaced seed ran into: the tail comes back rate-limited, and from the user's
+    // side nothing appears to have gone wrong.
+    const a = await client({ deviceId: "flooder" });
+    await a.hello();
+    const results = await Promise.allSettled(
+      Array.from({ length: 260 }, (_, i) => a.mutate(`settings.flood${i}`, i))
+    );
+    const refused = results.filter((r) => r.status === "rejected");
+    expect(refused.length).toBeGreaterThan(0);
+    expect(refused.every((r) => String(r.reason).includes("rate-limited"))).toBe(true);
+  }, 30_000);
+
+  it("counts from a fixed window, which is why a seed must pause longer than it", async () => {
+    // The window starts at the connection's first mutation and does not slide, so pausing for less
+    // than the window is not pacing at all — the second chunk lands in the same window.
+    const a = await client({ deviceId: "windowed" });
+    await a.hello();
+    const first = await Promise.allSettled(Array.from({ length: 150 }, (_, i) => a.mutate(`settings.w1_${i}`, i)));
+    expect(first.filter((r) => r.status === "rejected")).toHaveLength(0);
+    await settle(200); // far less than the 10s window
+    const second = await Promise.allSettled(Array.from({ length: 100 }, (_, i) => a.mutate(`settings.w2_${i}`, i)));
+    expect(second.filter((r) => r.status === "rejected").length).toBeGreaterThan(0);
+  }, 30_000);
+});
